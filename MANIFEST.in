@@ -1,0 +1,38 @@
+# Copyright 2014 Novartis Institutes for Biomedical Research
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+include LICENSE.txt
+include src/cache.sql
+include src/model/featurecount.R
+include src/model/edger.R
+include src/model/deseq.R
+include src/model/deseq2.R
+include src/model/limmavoom.R
+include src/EF204940.fa
+include src/ef204940.gff
+include src/ef204940.gtf
+recursive-include src/templates *.html
+include doc/index.rst
+include doc/installation.rst
+include doc/extension.rst
+include doc/model.rst
+include doc/persistence.rst
+include doc/recipes.rst
+include doc/unified_execution.rst
+include doc/introduction.rst
+include doc/conf.py
+include doc/Makefile
+include doc/notebooks/railroadtracks*recipes).ipynb
+include doc/notebooks/railroadtracks*recipes).html

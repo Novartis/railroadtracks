@@ -1,0 +1,18 @@
+<table class="{{ cssclass }}">
+<thead>
+  <tr>
+  <th>Name</th>
+  <th>Class</th>
+  <th></th>
+  </tr>
+</thead>
+<tbody>
+  {% for elt in elements %}
+  <tr>
+    <td>{{ elt.name }}</td>
+    <td>{{ elt.cls|e}}</td>
+    <td class="{% if not elt.isdefined %}inverse{% endif %}">("{% if elt.isdefined %}defined{% else %}undefined{% endif %}")</td>
+  </tr>
+  {% endfor %}
+</tbody>
+</table>

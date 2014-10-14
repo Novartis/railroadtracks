@@ -1,0 +1,34 @@
+<table class="{{ cssclass }}">
+<thead>
+  <tr>
+    <th colspan="2">
+      {{ status }}
+    </th>
+  </tr>
+  <tr>
+    <th colspan="2">Working directory</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td colspan="2">{{ wd }}</td>
+  </tr>
+  <tr>
+    <td>Disk space</td>
+    <td><progress class="rsrsproject" max="{{ wdspace_total }}" value="{{ wdspace_used }}"></progress>&nbsp;{{ wdspace_used|format_largenumber }}GB (total: {{ wdspace_total|format_largenumber }}GB)</td>
+  </tr>
+</tbody>
+<thead>
+  <tr>
+    <td colspan="2">Tasks</td>
+  </tr>
+</thead>
+<tbody>
+  {% for status in taskstatuscount %}
+  <tr>
+    <td>{{ status.label }}</td>
+    <td><progress class="rsrsproject" max="{{ totaltasks }}" value="{{ status.count }}"></progress>&nbsp;{{ status.count }}/{{totaltasks}}</td>
+  </tr>
+  {% endfor %}
+</tbody>
+</table>

@@ -1,0 +1,16 @@
+<table  class="{{ cssclass }}">
+<thead>
+  <tr>
+  <th>Activity</th>
+  <th>Progress</th>
+  </tr>
+</thead>
+<tbody>
+  {% for activity in activities %}
+  <tr>
+    <td>{{ activity.name }}</td>
+    <td><progress class="rsrsproject" max="{{ activity.total }}" value="{{ activity.count_done }}"></progress>&nbsp;{{ activity.count_done }}/{{ activity.total }}</td>
+  </tr>
+  {% endfor %}
+</tbody>
+</table>

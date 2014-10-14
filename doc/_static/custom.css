@@ -1,0 +1,163 @@
+/* custom styles to make nicer slides */
+
+
+h1, h2 {
+   color: rgb(146, 50, 34);
+}
+
+h2 {
+   width: 100%;
+   padding-bottom: .3em;
+   border-bottom: solid .1em #644f40;
+}
+
+.slide {
+    background-image: url('NVSRGB.png');
+    background-repeat: no-repeat;
+    background-position: 93% 97%;
+    background-size: 15% 8%;
+}
+
+.slide-no {
+    position: absolute;
+    bottom: 1ex;
+    left: 3em;
+    font-size: 50%;
+}
+
+.slide-footer {
+    position: absolute;
+    bottom: 1ex;
+    left: 5em;
+    font-size: 50%;
+}
+
+.frontslide {
+    background-image: url('nibr_frontslide_block.png'), url('nibr_frontslide_image.png'), url('NVSRGB.png');
+    background-repeat: no-repeat;
+    background-position: left 23%, right 23%, 7% 92%;
+    background-size: 20% 35%, 80% 35%, 20% 10%;
+}
+
+.frontslide h1 {
+    padding-top: 20%;
+   /* color: rgb(99, 67, 41); */
+   color: rgb(146, 50, 34);
+   font-size: 150%;
+}
+
+.frontslide .slide-footer {
+    display: none;
+}
+
+.frontslide .slide-no {
+    display: none;
+}
+
+.frontslide table.docutils td,
+.frontslide table.docutils th {
+  border-bottom: none;
+}
+
+.frontslide table.docutils tr:last-child>td {
+  border-top: solid 2px rgb(0,0,0);
+  font-weight: bold;
+}
+
+blockquote.epigraph {
+    margin-top: 3em;
+}
+
+p.graphviz {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.code03 div.highlight pre {
+    font-size: 30%;   
+}
+
+.code05 div.highlight pre {
+    height: auto;
+    max-height: 500px;
+    overflow: auto;
+    word-break: normal !important;
+    word-wrap: normal !important;
+    white-space: pre !important;
+    font-size: 50%;   
+}
+
+.code div.highlight pre {
+    height: auto;
+    max-height: 500px;
+    overflow: auto;
+    word-break: normal !important;
+    word-wrap: normal !important;
+    white-space: pre !important;
+}
+
+p.graphviz img {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.image25p p.graphviz img {
+    width: 25%;
+}
+
+.image35p p.graphviz img {
+    width: 35%;
+}
+
+.image50p p.graphviz img {
+    width: 50%;
+}
+
+.image65p p.graphviz img {
+    width: 65%;
+}
+
+.image70p p.graphviz img {
+    width: 70%;
+}
+
+.image75p p.graphviz img {
+    width: 75%;
+}
+
+.image90p p.graphviz img {
+    width: 90%;
+}
+
+.simage90p img {
+    width: 90%;
+}
+
+.table70p table {
+    font-size: 70%;
+    line-height: 1em;
+    padding: 1px 5px 1px 2px;
+}
+
+.shifleft4 div.highlight-python span {
+    padding-left: -4em;
+}
+
+.instructions table.docutils td:first-child {
+  background-color: rgb(255,255,255);
+  border: solid 1px rgb(200,200,200);
+  -moz-border-radius: 5px;
+  -webkit-border-radius: 5px;
+  border-radius: 5px;
+  margin-left: auto;
+  margin-right: auto;
+  min-width: 1em;
+  text-align: center;
+  display: inline-block;
+}
+
+.addition table.docutils td,
+.addition table.docutils th {
+  border-bottom: none;
+}
