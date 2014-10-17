@@ -108,6 +108,16 @@ class R(Executable):
         logger.info('R package "%s" version is %s' % (name, version))
         return version
 
+    def packageversion_or_none(self, name):
+        """ Return the package version, or `None` if the R package cannot be loaded.
+        This method is a wrapper around the method `packageversion`.
+        """
+        try:
+            version = self.packageversion(name)
+        except MissingSoftware:
+            version = None
+        return version
+
     def run_snippet(self, code, var_in,
                     magicvariable = 'railroadtracks_import'):
         """

@@ -59,6 +59,9 @@ class EnvironmentTestCase(unittest.TestCase):
         version = r_exec.packageversion('stats')
         self.assertTrue(r_version.startswith(version))
 
+    @unittest.skipIf(not (has_R and \
+                          environment.R('R').packageversion_or_none('rjson') is not None),
+                     'R and its package "rjson" must be present.')
     def test_R_run_snippet(self):
         r_exec = environment.R('R')
         # run a snippet
@@ -146,30 +149,14 @@ FRAG_METHOD     UR
         self.assertGreater(os.stat(read2_fn).st_size, 0)
         self.assertGreater(os.stat(lib_fn).st_size, 0)
 
-class ModelUtilsTestCase(unittest.TestCase):
+
+class AssetsTestCase(unittest.TestCase):
 
     def setUp(self):
-        cls_index = rnaseq.Bowtie2Build
-        executable_index = 'bowtie2-build'
-        cls_align = rnaseq.Bowtie2
-        executable_align = 'bowtie2'
-        read1_fh = tempfile.NamedTemporaryFile(prefix='read1', suffix='.fq')
-        read2_fh = tempfile.NamedTemporaryFile(prefix='read2', suffix='.fq')
-        with open(PHAGEFASTA) as fasta_fh:
-            reference = next(railroadtracks.model.simulate.readfasta_iter(fasta_fh))
-        self._read1_fh, self._read2_fh = railroadtracks.model.simulate.randomPEreads(read1_fh, read2_fh, reference)
         self.tempdir = tempfile.mkdtemp()
-        assets_align, cmd, returncode, fh = _build_UpToAlign(cls_index, executable_index,
-                                                             cls_align, executable_align, self._read1_fh,
-                                                             os.path.join(self.tempdir, 'reference'))
-        self._assets_align = assets_align
-        self._fh = fh # protect temp file from deletion
 
     def tearDown(self):
-        self._read1_fh.close()
-        self._read2_fh.close()
         shutil.rmtree(self.tempdir)
-
 
     def test_assetfactory(self):
         Foo = core.assetfactory('Foo', [core.AssetAttr('bar', core.File, '')])
@@ -213,9 +200,6 @@ class ModelUtilsTestCase(unittest.TestCase):
         undefoo.bar.name = '123'
         self.assertEquals('123', undefoo.bar.name)
 
-
-    @unittest.skipIf(not rnaseq.hasngsp,
-                     'Python module "ngs_plumbing" cannot be imported.')
     def test_GzipFastqFilePair(self):
         NFRAGMENTS_MATCH = 300
         read1_fh = tempfile.NamedTemporaryFile(prefix='read1', suffix='.fq.gz', dir=self.tempdir, delete=False)
@@ -246,6 +230,32 @@ class ModelUtilsTestCase(unittest.TestCase):
         self.assertEqual(NFRAGMENTS_MATCH, i+1)
 
 
+class ModelUtilsTestCase(unittest.TestCase):
+
+    def setUp(self):
+        cls_index = rnaseq.Bowtie2Build
+        executable_index = 'bowtie2-build'
+        cls_align = rnaseq.Bowtie2
+        executable_align = 'bowtie2'
+        read1_fh = tempfile.NamedTemporaryFile(prefix='read1', suffix='.fq')
+        read2_fh = tempfile.NamedTemporaryFile(prefix='read2', suffix='.fq')
+        with open(PHAGEFASTA) as fasta_fh:
+            reference = next(railroadtracks.model.simulate.readfasta_iter(fasta_fh))
+        self._read1_fh, self._read2_fh = railroadtracks.model.simulate.randomPEreads(read1_fh, read2_fh, reference)
+        self.tempdir = tempfile.mkdtemp()
+        assets_align, cmd, returncode, fh = _build_UpToAlign(cls_index, executable_index,
+                                                             cls_align, executable_align, self._read1_fh,
+                                                             os.path.join(self.tempdir, 'reference'))
+        self._assets_align = assets_align
+        self._fh = fh # protect temp file from deletion
+
+    def tearDown(self):
+        self._read1_fh.close()
+        self._read2_fh.close()
+        shutil.rmtree(self.tempdir)
+
+    @unittest.skipIf(not environment.Executable.ispresent('bowtie2-build'),
+                     'bowtie2-build is not in the PATH')
     def test_ensuresam(self):
         assets_align = self._assets_align
         fn = assets_align.target.alignment.name
@@ -255,6 +265,8 @@ class ModelUtilsTestCase(unittest.TestCase):
         fh_sam_again = railroadtracks.model.files.ensure_sam(fh_sam.name)
         self.assertEquals(fh_sam.name, fh_sam_again.name)
 
+    @unittest.skipIf(not environment.Executable.ispresent('bowtie2-build'),
+                     'bowtie2-build is not in the PATH')
     def test_ensurebam(self):
         assets_align = self._assets_align
         fn = assets_align.target.alignment.name
@@ -268,6 +280,8 @@ class ModelUtilsTestCase(unittest.TestCase):
         with open(fn) as fh_bam_orig:
             self.assertEqual(fh_bam_orig.read(), fh_bam.read())
 
+    @unittest.skipIf(not environment.Executable.ispresent('bowtie2-build'),
+                     'bowtie2-build is not in the PATH')
     def test_SamtoolsBamToSam(self):
         executable = 'samtools'
         bamtosam = railroadtracks.model.files.SamtoolsBamToSam(executable)
@@ -285,6 +299,8 @@ class ModelUtilsTestCase(unittest.TestCase):
         # check that the target file is not empty
         self.assertGreater(os.stat(sam_fh.name).st_size, 0)
 
+    @unittest.skipIf(not environment.Executable.ispresent('bowtie2-build'),
+                     'bowtie2-build is not in the PATH')
     def test_SamtoolsSamToBam(self):
         executable = 'samtools'
         bamtosam = railroadtracks.model.files.SamtoolsBamToSam(executable)
@@ -856,8 +872,9 @@ class ModelHandleBAMTestCase(unittest.TestCase):
         shutil.rmtree(self.tempdir)
 
 
-    @unittest.skipIf(not environment.Executable.ispresent('samtools'),
-                     'samtools is not in the PATH')        
+    @unittest.skipIf(not (environment.Executable.ispresent('samtools') and \
+                          environment.Executable.ispresent('bowtie2-build')),
+                     'samtools and bowtie2-build should be in the PATH')        
     def test_SamtoolsSortByID(self):
         AssetsSorter = rnaseq.AssetsSorter
         SamtoolsSorterByID = rnaseq.SamtoolsSorterByID
@@ -876,8 +893,9 @@ class ModelHandleBAMTestCase(unittest.TestCase):
         # check that the sorted BAM is not an empty file
         self.assertGreater(os.stat(fh.name).st_size, 0)
 
-    @unittest.skipIf(not environment.Executable.ispresent('samtools'),
-                     'samtools is not in the PATH')        
+    @unittest.skipIf(not (environment.Executable.ispresent('samtools') and \
+                          environment.Executable.ispresent('bowtie2-build')),
+                     'samtools and bowtie2-build should be in the PATH')        
     def test_SamtoolsExtractUnaligned(self):
         SamtoolsExtractUnaligned = rnaseq.SamtoolsExtractUnaligned
         executable_sort = 'samtools'
@@ -896,8 +914,9 @@ class ModelHandleBAMTestCase(unittest.TestCase):
         #FIXME: other tests on the results
 
 
-    @unittest.skipIf(not environment.Executable.ispresent('samtools'),
-                     'samtools is not in the PATH')        
+    @unittest.skipIf(not (environment.Executable.ispresent('samtools') and \
+                          environment.Executable.ispresent('bowtie2-build')),
+                     'samtools and bowtie2-build should be in the PATH')        
     def test_SamtoolsFilter(self):
         SamtoolsFilter = railroadtracks.model.files.SamtoolsFilter
         executable_sort = 'samtools'
@@ -986,7 +1005,8 @@ class ModelQuantificationTestCase(unittest.TestCase):
         self._read2_fh.close()
         shutil.rmtree(self.tempdir)
 
-    @unittest.skipIf(not environment.Executable.ispresent('htseq-count'),
+    @unittest.skipIf(not (environment.Executable.ispresent('htseq-count') and \
+                          environment.Executable.ispresent('bowtie2-build')),
                      'htseq-count is not in the PATH')        
     def test_HTSeqCount(self):
         AssetsQuantifier = rnaseq.AssetsQuantifier
@@ -1021,6 +1041,10 @@ class ModelQuantificationTestCase(unittest.TestCase):
                                                                         ('-m', 'union', '-s', 'no', '-a', '10')))
             self.assertEqual(0, returncode)
 
+    @unittest.skipIf(not (environment.Executable.ispresent('htseq-count') and \
+                          environment.Executable.ispresent('R') and \
+                          environment.Executable('R').packageversion('Rsubread' is not None)),
+                     'Htseq-count is not in the PATH')        
     def test_FeatureCount(self):
         AssetsQuantifier = rnaseq.AssetsQuantifier
         FeatureCount = rnaseq.FeatureCount
@@ -1233,6 +1257,12 @@ class ModelDExpressionTestCase(unittest.TestCase):
             read2_fh.close()
         shutil.rmtree(self.tempdir)
 
+
+    @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
+                          environment.Executable.ispresent('htseq-count') and \
+                          environment.Executable.ispresent('R') and \
+                          environment.Executable.R('R').packageversion_or_none('DESeq') is not None),
+                     'bowtie2-build, htseq-count, R (with package "DESeq") must be in the PATH')
     def test_StepDESeq(self):
         deseq = rnaseq.DESeq(self._r_exec)
         self.assertEqual(set((rnaseq.ACTIVITY.DIFFEXP,)), set(deseq.activities))
@@ -1247,6 +1277,11 @@ class ModelDExpressionTestCase(unittest.TestCase):
         cmd, returncode = deseq.run(assets, parameters=('--dispersion-fittype=local', ))
         self.assertEquals(0, returncode)
 
+    @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
+                          environment.Executable.ispresent('htseq-count') and \
+                          environment.Executable.ispresent('R') and \
+                          environment.Executable.R('R').packageversion_or_none('DESeq2') is not None),
+                     'bowtie2-build, htseq-count, R (with package "DESeq2") must be in the PATH')
     def test_StepDESeq2(self):
         deseq2 = rnaseq.DESeq2(self._r_exec)
         self.assertEqual(set((rnaseq.ACTIVITY.DIFFEXP,)), set(deseq2.activities))
@@ -1262,6 +1297,11 @@ class ModelDExpressionTestCase(unittest.TestCase):
         self.assertEquals(0, returncode)
 
 
+    @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
+                          environment.Executable.ispresent('htseq-count') and \
+                          environment.Executable.ispresent('R') and \
+                          environment.Executable.R('R').packageversion_or_none('edgeR') is not None),
+                     'bowtie2-build, htseq-count, R (with package "edgeR") must be in the PATH')
     def test_StepEdgeR(self):
         edger = rnaseq.EdgeR(self._r_exec)
         self.assertEqual(set((rnaseq.ACTIVITY.DIFFEXP,)), set(edger.activities))
@@ -1276,6 +1316,11 @@ class ModelDExpressionTestCase(unittest.TestCase):
         cmd, returncode = edger.run(assets)
         self.assertEquals(0, returncode)
 
+    @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
+                          environment.Executable.ispresent('htseq-count') and \
+                          environment.Executable.ispresent('R') and \
+                          environment.Executable.R('R').packageversion_or_none('limma') is not None),
+                     'bowtie2-build, htseq-count, R (with package "limma") must be in the PATH')
     def test_StepLimmaVoom(self):
         voom = rnaseq.LimmaVoom(self._r_exec)
         self.assertEqual(set((rnaseq.ACTIVITY.DIFFEXP,)), set(voom.activities))
@@ -1917,7 +1962,9 @@ class EasyTestCase(unittest.TestCase):
         fz_keys.sort()
         for x,y in zip(kv, fz_keys):
             self.assertEqual(x[0],y)
-            
+
+    @unittest.skipIf(not environment.Executable.ispresent('bowtie2-build'),
+                     'bowtie2-build is not in the PATH')            
     def test_command_line(self):
         packagedir = os.path.dirname(railroadtracks.__file__)
         PHAGEFASTA = os.path.join(packagedir, 'EF204940.FASTA')
@@ -1932,6 +1979,8 @@ class EasyTestCase(unittest.TestCase):
         returncode = subprocess.check_call(cmd)
         self.assertEqual(0, returncode)
 
+    @unittest.skipIf(not environment.Executable.ispresent('bowtie2-build'),
+                     'bowtie2-build is not in the PATH')
     def test_EasyProject(self):
         packagedir = os.path.dirname(railroadtracks.__file__)
         PHAGEFASTA = os.path.join(packagedir, 'EF204940.FASTA')
@@ -1950,6 +1999,8 @@ class EasyTestCase(unittest.TestCase):
         # Number of steps should remain one (same assets and paremeters)
         self.assertEqual(1, project.todo._cache.nconcrete_steps)
 
+    @unittest.skipIf(not environment.Executable.ispresent('bowtie2-build'),
+                     'bowtie2-build is not in the PATH')
     def test_Task(self):
         project = easy.Project(rnaseq, self.wd)
         #
@@ -2053,8 +2104,10 @@ class RecipeTestCase(unittest.TestCase):
         #FIXME: rather test it in the model ?
         reference = core.File(self.reference_fn)
 
-    @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and\
-                          environment.Executable.ispresent('htseq-count')),
+    @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
+                          environment.Executable.ispresent('htseq-count') and \
+                          environment.Executable.ispresent('R') and \
+                          environment.Executable.R('R').packageversion_or_none('edgeR') is not None),
                      'bowtie2 and/or htseq-count is not in the PATH')
     def test_RecipeSimpleIncremental(self):
         project = self.project
@@ -2221,8 +2274,10 @@ class RecipeTestCase(unittest.TestCase):
                                  project.todo._cache.nconcrete_steps)
                 continue
 
-    @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and\
-                          environment.Executable.ispresent('htseq-count')),
+    @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
+                          environment.Executable.ispresent('htseq-count') and \
+                          environment.Executable.ispresent('R') and \
+                          environment.Executable.R('R').packageversion_or_none('edgeR') is not None),
                      'bowtie2 and/or htseq-count is not in the PATH')
     def test_RecipeSimpleIncrementalComplete(self):
         def runtasks(torun):
@@ -2233,9 +2288,11 @@ class RecipeTestCase(unittest.TestCase):
                     task.execute()
         self._recipesimpleincremental(runtasks)
 
-    @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and\
-                          environment.Executable.ispresent('htseq-count')),
-                     'bowtie2 and/or htseq-count is not in the PATH')
+    @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
+                          environment.Executable.ispresent('htseq-count') and \
+                          environment.Executable.ispresent('R') and \
+                          environment.Executable.R('R').packageversion_or_none('edgeR') is not None),
+                     'bowtie2, htseq-count, R (with package "edgeR") must be in the PATH')
     def test_RecipeSimpleIncrementalCompleteNoRun(self):
         def runtasks(torun):
             # do nothing
@@ -2243,9 +2300,11 @@ class RecipeTestCase(unittest.TestCase):
         self._recipesimpleincremental(runtasks)
 
 
-    @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and\
-                          environment.Executable.ispresent('htseq-count')),
-                     'bowtie2 and/or htseq-count is not in the PATH')
+    @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
+                          environment.Executable.ispresent('htseq-count') and \
+                          environment.Executable.ispresent('R') and \
+                          environment.Executable.R('R').packageversion_or_none('edgeR') is not None),
+                     'bowtie2, htseq-count, R (with package "edgeR") must be in the PATH')
     def test_RecipeSimple(self):
         project = self.project
         env = self.env
@@ -2353,8 +2412,13 @@ class RecipeTestCase(unittest.TestCase):
 
     @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
                           environment.Executable.ispresent('bowtie-build') and \
-                          environment.Executable.ispresent('STAR')),
-                     'bowtie2, bowtie, STAR, and TopHat2 must be in the PATH')
+                          environment.Executable.ispresent('STAR') and \
+                          environment.Executable.ispresent('R') and \
+                          environment.Executable.R('R').packageversion_or_none('edgeR') is not None and \
+                          environment.Executable.R('R').packageversion_or_none('DESeq') is not None and \
+                          environment.Executable.R('R').packageversion_or_none('DESeq2') is not None and \
+                          environment.Executable.R('R').packageversion_or_none('limma') is not None),
+                     'bowtie2, bowtie, STAR, TopHat2, and R (with packages "edgeR", "DESeq", "DESeq2", "limma") must be in the PATH')
     def test_RecipeLoop(self):
         project = self.project
         env = self.env
@@ -2505,6 +2569,7 @@ class RecipeTestCase(unittest.TestCase):
 def suite():
     suite = unittest.TestLoader.loadTestsFromTestCase(ModelTestCase)
     suite.addTest(unittest.TestLoader.loadTestsFromTestCase(ModelSimulateTestCase))
+    suite.addTest(unittest.TestLoader.loadTestsFromTestCase(AssetsTestCase))
     suite.addTest(unittest.TestLoader.loadTestsFromTestCase(ModelUtilsTestCase))
     suite.addTest(unittest.TestLoader.loadTestsFromTestCase(UnifexTestCase))
     suite.addTest(unittest.TestLoader.loadTestsFromTestCase(ModelAlignTestCase))
