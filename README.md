@@ -4,36 +4,21 @@
 Railroadtracks
 ==============
 
-
-This is a Python package.
+Railroadtracks is a Python package.
 
 
 Installation
-============
+------------
 
-If packaged in a tarball, it can be installed
-with `pip`:
+The documentation should be consulted for information about the requirements and the installation process.
 
+While we are working on a link to a build of the documentation, the Sphinx source for it
+are be consulted: <a href="doc/installation.rst">doc/installation.rst</a>.
+
+Released version will be made available on Pypi and the installation be as easy as:
 ```
-pip install <package>.tar.gz
-```
-
-It can also be installed from its source directory:
-
-```
-python setup.py install
+pip install railroadtracks
 ```
 
-Tests can/should be performed for every new installation or upgrade:
-
-```
-python -m railroadtracks.tests
-```
-
-or (verbose mode):
-
-```
-python -m railroadtracks.tests -v
-```
 
 
