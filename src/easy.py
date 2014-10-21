@@ -136,7 +136,7 @@ class Task(object):
         """ Tasks the current task is depending on. """
         res = TaskSet()
         # fetch the source assets
-        entities = self.project.todo._cache.assets_of_stepconcrete_id(self._task_id, 'src')
+        entities = self.project.todo._cache.get_srcassets(self._task_id)
         for et in entities:
             # for each source asset, look for the tasks that also have it as a target
             if hasattr(et, 'iter_storedentities'):

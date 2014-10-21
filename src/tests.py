@@ -2032,6 +2032,15 @@ class EasyTestCase(unittest.TestCase):
         self.assertEqual(0, len(s1.difference(s2)))
         self.assertEqual(0, len(s2.difference(s1)))
 
+        # find the parents of an alignment
+        task = next(iter(alignment_tasks))
+        parent_taskset = task.parent_tasks()
+        # only one parent (the indexing step)
+        self.assertEqual(1, len(parent_taskset))
+        parent_task = next(iter(parent_taskset))
+        self.assertEqual(bowtie2index.activities, parent_task.call.step.activities)
+        self.assertEqual(bowtie2index._name, parent_task.call.step._name)
+
 # Test the writing of recipes
 from railroadtracks import easy
 
