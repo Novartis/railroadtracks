@@ -454,9 +454,10 @@ class SailfishQuant(QuantifierAbstract):
             csv_w.writerow(['ID', 'count'])
             col_id_i = header.index('# Transcript')
             col_counts_i = header.index('EstimatedNumReads')
+            if header != row:
+                csv_w.writerow((row[col_id_i], row[col_counts_i]))
             for row in csv_r:
                 csv_w.writerow((row[col_id_i], row[col_counts_i]))
-            
         return (cmd_count, returncode)
 
 
