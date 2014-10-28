@@ -373,6 +373,10 @@ class SailfishQuant(QuantifierAbstract):
                                    [SailfishIndex.Assets.Target.getassetattr('indexfilepattern'),
                                     core.AssetAttr('read1', FASTQPossiblyGzipCompressed, ''),
                                     core.AssetAttr('read2', FASTQPossiblyGzipCompressed, '', allownone=True)])
+        # 'counts' is coming from QuantifierAbstract
+        Target = core.assetfactory('Target', [core.AssetAttr('counts', SavedCSV, ''),
+                                              core.AssetAttr('output_dir', FilePattern, '')])
+                                              
 
 
     def __init__(self, executable=None):
@@ -427,14 +431,32 @@ class SailfishQuant(QuantifierAbstract):
         #cmd_count.extend(unknown)
         cmd_count.extend(parameters)
         cmd_count.extend(('--index', source.indexfilepattern.name))
-        if os.path.exists(assets.target.counts.name):
-            raise ValueError('Sailfish will fail if the output file "%s" is already present (and it is)' % assets.target.counts.name)
-        cmd_count.extend(('--out', assets.target.counts.name))
+        if os.path.exists(assets.target.output_dir.name):
+            raise ValueError('Sailfish will fail if the output directory "%s" is already present (and it is)' % assets.target.counts.name)
+        cmd_count.extend(('--out', assets.target.output_dir.name))
         cmd_count.extend(cmd_sub)
         #FIXME: why can't I make it work without list2cmdline() and shell=True
         with open(os.devnull, 'w') as fnull:
             returncode = subprocess.check_call(subprocess.list2cmdline(cmd_count), shell=True,
                                                stdout = fnull, stderr = fnull)
+
+        # The model is trying to make quantifiers compatible with one an other.
+        # We build the target asset `counts`
+        with open(assets.target.counts.name, 'w') as fh_out,\
+             open(os.path.join(assets.target.output_dir.name, 'quant_bias_corrected.sf')) as fh_in:
+            csv_r = csv.reader(fh_in, delimiter='\t')
+            csv_w = csv.writer(fh_out)
+            for row in csv_r:
+                if (len(row) == 0) or row[0].startswith('#'):
+                    header = row
+                    continue
+                break
+            csv_w.writerow(['ID', 'count'])
+            col_id_i = header.index('# Transcript')
+            col_counts_i = header.index('EstimatedNumReads')
+            for row in csv_r:
+                csv_w.writerow((row[col_id_i], row[col_counts_i]))
+            
         return (cmd_count, returncode)
 
 

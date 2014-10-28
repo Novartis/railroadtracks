@@ -972,10 +972,12 @@ class ModelAlignQuantificationTestCase(unittest.TestCase):
         sf = rnaseq.SailfishQuant(execname)
         A = sf.Assets
         count_csv = os.path.join(self.tempdir, 'counts.csv')
+        output_dir = os.path.join(self.tempdir, 'sailfish_output_dir')
         assets = A(A.Source(self.assets.target.indexfilepattern,
                             rnaseq.FASTQPossiblyGzipCompressed(self._read1_fh.name),
                             rnaseq.FASTQPossiblyGzipCompressed(self._read2_fh.name)),
-                   A.Target(rnaseq.SavedCSV(count_csv)))
+                   A.Target(rnaseq.SavedCSV(count_csv),
+                            rnaseq.FilePattern(output_dir)))
         cmd, returncode = sf.run(assets, parameters = ('--libtype', sf.LIBRARY_PE))
 
 class ModelQuantificationTestCase(unittest.TestCase):
