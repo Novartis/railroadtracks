@@ -20,5 +20,9 @@ Released version will be made available on Pypi and the installation be as easy 
 pip install railroadtracks
 ```
 
+In the meantime, the head can be installed with
+```
+pip install https://github.com/Novartis/railroadtracks/archive/master.zip
+```
 
 
