@@ -1974,7 +1974,7 @@ class EasyTestCase(unittest.TestCase):
         project = easy.Project(rnaseq, self.wd)
         bowtie2 = rnaseq.Bowtie2Build()
         assets = bowtie2.Assets(bowtie2.Assets.Source(rnaseq.SavedFASTA(PHAGEFASTA)),
-                                bowtie2.Assets.Target(rnaseq.SavedBowtieIndex(os.path.join(self.wd, 'foo'))))
+                                bowtie2.Assets.Target(rnaseq.SavedBowtie2Index(os.path.join(self.wd, 'foo'))))
         parameters = tuple()
         step_concrete_id = project.todo.add(bowtie2, assets, parameters = parameters)
         cmd = easy.command_line(project, step_concrete_id, bowtie2, assets, parameters = parameters)
