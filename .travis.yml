@@ -10,7 +10,7 @@ install:
   - sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
   - sudo apt-add-repository -y ppa:marutter/c2d4u
   - sudo apt-get update -qq
-  - sudo apt-get install -qq r-base-dev r-recommended r > /dev/null
+  - sudo apt-get install -qq r-base-dev r-recommended > /dev/null
   # You may want to periodically update this, although the conda update
   # conda line below will keep everything up-to-date.  We do this
   # conditionally because it saves us some downloading if the version is
