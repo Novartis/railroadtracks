@@ -6,7 +6,11 @@ before-install:
 python:
   - "2.7"
 install:
-  - sudo apt-get update
+  - sudo apt-add-repository -y "deb http://cran.rstudio.com/bin/linux/ubuntu `lsb_release -cs`/"
+  - sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
+  - sudo apt-add-repository -y ppa:marutter/c2d4u
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq r-base-dev r-recommended r > /dev/null
   # You may want to periodically update this, although the conda update
   # conda line below will keep everything up-to-date.  We do this
   # conditionally because it saves us some downloading if the version is
