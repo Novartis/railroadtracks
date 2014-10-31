@@ -10,7 +10,7 @@ install:
   - sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
   - sudo apt-add-repository -y ppa:marutter/c2d4u
   - sudo apt-get update -qq
-  - sudo apt-get install -qq r-base-dev r-recommended > /dev/null
+  - sudo apt-get install -qq r-base-dev r-recommended curl > /dev/null
   # You may want to periodically update this, although the conda update
   # conda line below will keep everything up-to-date.  We do this
   # conditionally because it saves us some downloading if the version is
@@ -36,9 +36,10 @@ install:
   # bioconductor packages
   - sudo Rscript -e 'source("http://www.bioconductor.org/biocLite.R"); biocLite(c("edgeR", "limma", "DESeq", "DESeq2"))' > /dev/null
   # 3rd-party bioinformatics tools
-  - wget http://downloads.sourceforge.net/project/bowtie-bio/bowtie2/2.2.4/bowtie2-2.2.4-linux-x86_64.zip?r=http%3A%2F%2Fsourceforge.net%2Fprojects%2Fbowtie-bio%2Ffiles%2Fbowtie2%2F2.2.4%2F&ts=1414721276&use_mirror=hivelocity
-  - unzip bowtie2-2.2.4-linux-x86_64.zip
-  - export PATH=`pwd`/bowtie2-2.2.4:${PATH}
+  - bowtie2_deps='2.2.4'
+  - curl -O -J -L http://sourceforge.net/projects/bowtie-bio/files/bowtie2/${bowtie2_deps}/bowtie2-${bowtie2_deps}-linux-x86_64.zip/download
+  - unzip bowtie2-${bowtie2_deps}-linux-x86_64.zip
+  - export PATH=`pwd`/bowtie2-${bowtie2_deps}:${PATH}
   # install railroadtracks
   - python setup.py install
 script:
