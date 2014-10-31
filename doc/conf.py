@@ -60,7 +60,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'rsrs'
+project = u'railroadtracks'
 copyright = u'2013-2014, NIBR'
 
 # The version info for the project you're documenting, acts as replacement for

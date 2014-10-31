@@ -781,7 +781,7 @@ class PersistentTaskList(object):
         for src in res:
             res = StoredEntity(*src)
             yield res
-        # Now yield sequences
+        # Now yield sequences (of stored entities)
         sql_template_ss = """
         SELECT stored_sequence.id,
                sc.label as label,
