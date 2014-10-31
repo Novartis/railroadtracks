@@ -7,6 +7,8 @@ Railroadtracks
 Railroadtracks is a Python package.
 
 
+[![Build Status](https://travis-ci.org/Novartis/railroadtracks.svg)](https://travis-ci.org/Novartis/railroadtracks)
+
 Installation
 ------------
 
