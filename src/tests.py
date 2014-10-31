@@ -968,6 +968,8 @@ class ModelAlignQuantificationTestCase(unittest.TestCase):
         assets, cmd, returncode = _build_StepIndex(rnaseq.SailfishIndex, execname, 
                                                    os.path.join(self.tempdir, 'reference'),
                                                    parameters = runner.PARAMETERS_DEFAULT)
+        if returncode != 0:
+            raise Exception("Index not built")
         self.assets = assets
         sf = rnaseq.SailfishQuant(execname)
         A = sf.Assets
