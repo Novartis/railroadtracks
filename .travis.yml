@@ -27,7 +27,7 @@ install:
   - conda update -q conda
   # Useful for debugging any issues with conda
   - conda info -a
-  - deps='pip jinja2'
+  - deps='pip jinja2 numpy'
   - deps_doc='pygraphviz sphinx'
   - conda create -p $HOME/py --yes $deps "python=$TRAVIS_PYTHON_VERSION"
   - export PATH=$HOME/py/bin:$PATH
