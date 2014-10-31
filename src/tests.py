@@ -1972,12 +1972,12 @@ class EasyTestCase(unittest.TestCase):
         PHAGEFASTA = os.path.join(packagedir, 'EF204940.FASTA')
         bowtie2index_exec = environment.Executable('bowtie2-build')
         project = easy.Project(rnaseq, self.wd)
-        bowtie = rnaseq.BowtieBuild()
-        assets = bowtie.Assets(bowtie.Assets.Source(rnaseq.SavedFASTA(PHAGEFASTA)),
-                               bowtie.Assets.Target(rnaseq.SavedBowtieIndex(os.path.join(self.wd, 'foo'))))
+        bowtie2 = rnaseq.Bowtie2Build()
+        assets = bowtie2.Assets(bowtie2.Assets.Source(rnaseq.SavedFASTA(PHAGEFASTA)),
+                                bowtie2.Assets.Target(rnaseq.SavedBowtieIndex(os.path.join(self.wd, 'foo'))))
         parameters = tuple()
-        step_concrete_id = project.todo.add(bowtie, assets, parameters = parameters)
-        cmd = easy.command_line(project, step_concrete_id, bowtie, assets, parameters = parameters)
+        step_concrete_id = project.todo.add(bowtie2, assets, parameters = parameters)
+        cmd = easy.command_line(project, step_concrete_id, bowtie2, assets, parameters = parameters)
         returncode = subprocess.check_call(cmd)
         self.assertEqual(0, returncode)
 
