@@ -34,7 +34,7 @@ install:
   # python packages not in conda
   - pip install ngs_plumbing enum34 networkx
   # bioconductor packages
-  #- sudo Rscript -e 'source("http://www.bioconductor.org/biocLite.R"); biocLite(c("edgeR", "limma", "DESeq", "DESeq2"))'
+  - sudo Rscript -e 'source("http://www.bioconductor.org/biocLite.R"); biocLite(c("edgeR", "limma", "DESeq", "DESeq2"))'
   # 3rd-party bioinformatics tools
   - wget http://downloads.sourceforge.net/project/bowtie-bio/bowtie2/2.2.4/bowtie2-2.2.4-linux-x86_64.zip?r=http%3A%2F%2Fsourceforge.net%2Fprojects%2Fbowtie-bio%2Ffiles%2Fbowtie2%2F2.2.4%2F&ts=1414721276&use_mirror=hivelocity
   - unzip bowtie2-2.2.4-linux-x86_64.zip
