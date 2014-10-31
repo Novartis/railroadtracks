@@ -33,6 +33,8 @@ install:
   - deps_doc='networkx pygraphviz sphinx'
   - conda create -p $HOME/py --yes $deps "python=$TRAVIS_PYTHON_VERSION"
   - export PATH=$HOME/py/bin:$PATH
+    # bioconductor packages
+  - R -e 'source("http://www.bioconductor.org/biocLite.R"); biocLite(c("edgeR", "limma", "DESeq", "DESeq2"))'
   # install railroadtracks
   - python setup.py install
 script:
