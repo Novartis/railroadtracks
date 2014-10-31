@@ -36,10 +36,15 @@ install:
   # bioconductor packages
   - sudo Rscript -e 'source("http://www.bioconductor.org/biocLite.R"); biocLite(c("edgeR", "limma", "DESeq", "DESeq2"))' > /dev/null
   # 3rd-party bioinformatics tools
+  # bowtie2
   - bowtie2_deps='2.2.4'
   - curl -O -J -L http://sourceforge.net/projects/bowtie-bio/files/bowtie2/${bowtie2_deps}/bowtie2-${bowtie2_deps}-linux-x86_64.zip/download
   - unzip bowtie2-${bowtie2_deps}-linux-x86_64.zip
   - export PATH=`pwd`/bowtie2-${bowtie2_deps}:${PATH}
+  # samtools
+  - curl -O -J -L http://sourceforge.net/projects/samtools/files/samtools/0.1.19/samtools-0.1.19.tar.bz2/download
+  - tar -xjf samtools-0.1.19.tar.bz2
+  - export PATH=`pwd`/samtools-0.1.19:${PATH}
   # install railroadtracks
   - python setup.py install
 script:
