@@ -28,12 +28,12 @@ install:
   # Useful for debugging any issues with conda
   - conda info -a
   - deps='pip jinja2'
-  - pip install ngs_plumbing
-  - pip install enum34
-  - deps_doc='networkx pygraphviz sphinx'
+  - deps_doc='pygraphviz sphinx'
   - conda create -p $HOME/py --yes $deps "python=$TRAVIS_PYTHON_VERSION"
   - export PATH=$HOME/py/bin:$PATH
-    # bioconductor packages
+  # python packages not in conda
+  - pip install ngs_plumbing enum34 networkx
+  # bioconductor packages
   - R -e 'source("http://www.bioconductor.org/biocLite.R"); biocLite(c("edgeR", "limma", "DESeq", "DESeq2"))'
   # install railroadtracks
   - python setup.py install
