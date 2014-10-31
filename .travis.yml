@@ -17,3 +17,5 @@ install:
   - export PATH=$HOME/py/bin:$PATH
   # install railroadtracks
   - python setup.py install
+script:
+  - python -m railroadtracks.tests
