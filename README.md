@@ -26,4 +26,11 @@ In the meantime, the head can be installed with
 pip install https://github.com/Novartis/railroadtracks/archive/master.zip
 ```
 
+Documentation
+-------------
+
+Automated building of the documentation is being worked on.
+
+In the meantime there is a <a href="http://nbviewer.ipython.org/github/Novartis/railroadtracks/blob/master/doc/notebooks/railroadtracks_tutorial.ipynb"> tutorial as an ipython notebook</a>.
+
 
