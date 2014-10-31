@@ -44,6 +44,7 @@ install:
   # samtools
   - curl -O -J -L http://sourceforge.net/projects/samtools/files/samtools/0.1.19/samtools-0.1.19.tar.bz2/download
   - tar -xjf samtools-0.1.19.tar.bz2
+  - cd samtools-0.1.19; make; cd ..
   - export PATH=`pwd`/samtools-0.1.19:${PATH}
   # install railroadtracks
   - python setup.py install
