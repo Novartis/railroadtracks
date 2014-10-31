@@ -34,7 +34,7 @@ install:
   # python packages not in conda
   - pip install ngs_plumbing enum34 networkx
   # bioconductor packages
-  - Rscript -e 'source("http://www.bioconductor.org/biocLite.R"); biocLite(c("edgeR", "limma", "DESeq", "DESeq2"))'
+  - sudo Rscript -e 'source("http://www.bioconductor.org/biocLite.R"); biocLite(c("edgeR", "limma", "DESeq", "DESeq2"))'
   # install railroadtracks
   - python setup.py install
 script:
