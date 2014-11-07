@@ -58,6 +58,6 @@ install:
   # HTSeq
   - pip install HTSeq
   # install railroadtracks
-  - python setup.py install
+  - pip install .
 script:
   - python -m railroadtracks.tests
