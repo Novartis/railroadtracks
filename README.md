@@ -7,6 +7,7 @@ Railroadtracks
 Railroadtracks is a Python package to handle connected computation steps for DNA and RNA Seq.
 
 Master: [![Build Status](https://travis-ci.org/Novartis/railroadtracks.svg?branch=master)](https://travis-ci.org/Novartis/railroadtracks/branches)
+
 version_0.3.x: [![Build Status](https://travis-ci.org/Novartis/railroadtracks.svg?branch=version_0.3.x)](https://travis-ci.org/Novartis/railroadtracks/branches)
 
 Installation
