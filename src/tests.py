@@ -1265,7 +1265,7 @@ class ModelDExpressionTestCase(unittest.TestCase):
     @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
                           environment.Executable.ispresent('htseq-count') and \
                           environment.Executable.ispresent('R') and \
-                          environment.Executable.R('R').packageversion_or_none('DESeq') is not None),
+                          environment.R('R').packageversion_or_none('DESeq') is not None),
                      'bowtie2-build, htseq-count, R (with package "DESeq") must be in the PATH')
     def test_StepDESeq(self):
         deseq = rnaseq.DESeq(self._r_exec)
@@ -1284,7 +1284,7 @@ class ModelDExpressionTestCase(unittest.TestCase):
     @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
                           environment.Executable.ispresent('htseq-count') and \
                           environment.Executable.ispresent('R') and \
-                          environment.Executable.R('R').packageversion_or_none('DESeq2') is not None),
+                          environment.R('R').packageversion_or_none('DESeq2') is not None),
                      'bowtie2-build, htseq-count, R (with package "DESeq2") must be in the PATH')
     def test_StepDESeq2(self):
         deseq2 = rnaseq.DESeq2(self._r_exec)
@@ -1304,7 +1304,7 @@ class ModelDExpressionTestCase(unittest.TestCase):
     @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
                           environment.Executable.ispresent('htseq-count') and \
                           environment.Executable.ispresent('R') and \
-                          environment.Executable.R('R').packageversion_or_none('edgeR') is not None),
+                          environment.R('R').packageversion_or_none('edgeR') is not None),
                      'bowtie2-build, htseq-count, R (with package "edgeR") must be in the PATH')
     def test_StepEdgeR(self):
         edger = rnaseq.EdgeR(self._r_exec)
@@ -1323,7 +1323,7 @@ class ModelDExpressionTestCase(unittest.TestCase):
     @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
                           environment.Executable.ispresent('htseq-count') and \
                           environment.Executable.ispresent('R') and \
-                          environment.Executable.R('R').packageversion_or_none('limma') is not None),
+                          environment.R('R').packageversion_or_none('limma') is not None),
                      'bowtie2-build, htseq-count, R (with package "limma") must be in the PATH')
     def test_StepLimmaVoom(self):
         voom = rnaseq.LimmaVoom(self._r_exec)
@@ -2120,7 +2120,7 @@ class RecipeTestCase(unittest.TestCase):
     @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
                           environment.Executable.ispresent('htseq-count') and \
                           environment.Executable.ispresent('R') and \
-                          environment.Executable.R('R').packageversion_or_none('edgeR') is not None),
+                          environment.R('R').packageversion_or_none('edgeR') is not None),
                      'bowtie2 and/or htseq-count is not in the PATH')
     def test_RecipeSimpleIncremental(self):
         project = self.project
@@ -2290,7 +2290,7 @@ class RecipeTestCase(unittest.TestCase):
     @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
                           environment.Executable.ispresent('htseq-count') and \
                           environment.Executable.ispresent('R') and \
-                          environment.Executable.R('R').packageversion_or_none('edgeR') is not None),
+                          environment.R('R').packageversion_or_none('edgeR') is not None),
                      'bowtie2 and/or htseq-count is not in the PATH')
     def test_RecipeSimpleIncrementalComplete(self):
         def runtasks(torun):
@@ -2304,7 +2304,7 @@ class RecipeTestCase(unittest.TestCase):
     @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
                           environment.Executable.ispresent('htseq-count') and \
                           environment.Executable.ispresent('R') and \
-                          environment.Executable.R('R').packageversion_or_none('edgeR') is not None),
+                          environment.R('R').packageversion_or_none('edgeR') is not None),
                      'bowtie2, htseq-count, R (with package "edgeR") must be in the PATH')
     def test_RecipeSimpleIncrementalCompleteNoRun(self):
         def runtasks(torun):
@@ -2316,7 +2316,7 @@ class RecipeTestCase(unittest.TestCase):
     @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
                           environment.Executable.ispresent('htseq-count') and \
                           environment.Executable.ispresent('R') and \
-                          environment.Executable.R('R').packageversion_or_none('edgeR') is not None),
+                          environment.R('R').packageversion_or_none('edgeR') is not None),
                      'bowtie2, htseq-count, R (with package "edgeR") must be in the PATH')
     def test_RecipeSimple(self):
         project = self.project
@@ -2427,10 +2427,10 @@ class RecipeTestCase(unittest.TestCase):
                           environment.Executable.ispresent('bowtie-build') and \
                           environment.Executable.ispresent('STAR') and \
                           environment.Executable.ispresent('R') and \
-                          environment.Executable.R('R').packageversion_or_none('edgeR') is not None and \
-                          environment.Executable.R('R').packageversion_or_none('DESeq') is not None and \
-                          environment.Executable.R('R').packageversion_or_none('DESeq2') is not None and \
-                          environment.Executable.R('R').packageversion_or_none('limma') is not None),
+                          environment.R('R').packageversion_or_none('edgeR') is not None and \
+                          environment.R('R').packageversion_or_none('DESeq') is not None and \
+                          environment.R('R').packageversion_or_none('DESeq2') is not None and \
+                          environment.R('R').packageversion_or_none('limma') is not None),
                      'bowtie2, bowtie, STAR, TopHat2, and R (with packages "edgeR", "DESeq", "DESeq2", "limma") must be in the PATH')
     def test_RecipeLoop(self):
         project = self.project
