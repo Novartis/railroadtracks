@@ -55,6 +55,7 @@ install:
   - cd bwa-${bwa_deps}
   - make
   - export PATH=`pwd`:${PATH}
+  - cd ../
   # HTSeq
   - pip install HTSeq
   # install railroadtracks
