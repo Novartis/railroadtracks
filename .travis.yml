@@ -46,6 +46,15 @@ install:
   - tar -xjf samtools-0.1.19.tar.bz2
   - cd samtools-0.1.19; make; cd ..
   - export PATH=`pwd`/samtools-0.1.19:${PATH}
+  # BWA
+  - bwa_deps='0.7.10'
+  - wget http://downloads.sourceforge.net/project/bio-bwa/bwa-${bwa_deps}.tar.bz2
+  - tar -xjf bwa-${bwa_deps}.tar.bz2
+  - cd bwa-${bwa_deps}
+  - make
+  - export PATH=`pwd`:${PATH}
+  # HTSeq
+  - pip install HTSeq
   # install railroadtracks
   - python setup.py install
 script:
