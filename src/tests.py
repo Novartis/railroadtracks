@@ -1047,7 +1047,7 @@ class ModelQuantificationTestCase(unittest.TestCase):
 
     @unittest.skipIf(not (environment.Executable.ispresent('htseq-count') and \
                           environment.Executable.ispresent('R') and \
-                          environment.Executable('R').packageversion('Rsubread' is not None)),
+                          environment.R('R').packageversion('Rsubread') is not None)),
                      'Htseq-count is not in the PATH')        
     def test_FeatureCount(self):
         AssetsQuantifier = rnaseq.AssetsQuantifier
