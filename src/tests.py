@@ -26,6 +26,8 @@ import railroadtracks.model.diffexp
 import railroadtracks.model.files
 import shutil
 import gzip
+import re
+import random
 from . import core
 from . import hortator
 from . import rnaseq
@@ -1197,24 +1199,8 @@ class ModelDExpressionTestCase(unittest.TestCase):
     """
     
     def setUp(self):
-        cls_index = rnaseq.Bowtie2Build
-        executable_index = 'bowtie2-build'
-        cls_align = rnaseq.Bowtie2
-        executable_align = 'bowtie2'
-        cls_quantify = rnaseq.FeatureCount
-        executable_quantify = None # FeatureCount is called through R
-        # index the reference
         self.tempdir = tempfile.mkdtemp()
-        assets_index, cmd, index_res = _build_StepIndex(cls_index, executable_index,
-                                                        os.path.join(self.tempdir, 'reference'))
-        all_reads_fh = list()
-        self._all_reads_fh = all_reads_fh
-        assets_align_list = list()
-        self._assets_align_list = assets_align_list
-        assets_counts_list = list()
-        self._assets_counts_list = assets_counts_list
-        _preserve_fh = list()
-        sampleinfo_fh = tempfile.NamedTemporaryFile(suffix='.csv')
+        sampleinfo_fh = tempfile.NamedTemporaryFile(dir=self.tempdir, suffix='.csv', delete=False)
         csv_w = csv.writer(sampleinfo_fh)
         csv_w.writerow(['sample_id', 'group'])
         for i in range(6):
@@ -1223,57 +1209,37 @@ class ModelDExpressionTestCase(unittest.TestCase):
         self._sampleinfo_fh = sampleinfo_fh
         with open(PHAGEFASTA) as fasta_fh:
             reference = next(railroadtracks.model.simulate.readfasta_iter(fasta_fh))
-        for i in range(6):
-            read1_fh = tempfile.NamedTemporaryFile(prefix='read1', suffix='.fq')
-            read2_fh = tempfile.NamedTemporaryFile(prefix='read2', suffix='.fq')
-            read1_fh, read2_fh = railroadtracks.model.simulate.randomPEreads(read1_fh, read2_fh, reference)
-            all_reads_fh.append((read1_fh, read2_fh))
-            # align reads
-            version, assets_align, cmd, returncode, fh_align = _build_StepAlign(assets_index,
-                                                                                cls_align, executable_align,
-                                                                                read1_fh)
-            # quantify them
-            assets_counts, cmd, returncode, fh = _build_StepQuantify(assets_align,
-                                                                     cls_quantify, 
-                                                                     executable_quantify,
-                                                                     cls_quantify._noexons_parameters)
-            assets_counts_list.append(assets_counts)
-            _preserve_fh.append(fh)
-        self._preserve_fh = _preserve_fh
-        # merge into one table
-        ColumnMerger = rnaseq.ColumnMerger
-        Assets = ColumnMerger.Assets
-        merger = ColumnMerger()
-        tmp = tuple(x.target.counts for x in assets_counts_list)
-        source = Assets.Source(rnaseq.SavedCSVSequence(tmp))
-        fh_merged = tempfile.NamedTemporaryFile(suffix='.csv')
-        assets_merge = Assets(source,
-                              Assets.Target(rnaseq.SavedCSV(fh_merged.name)))
-        cmd, returncode = merger.run(assets_merge)
-        self._assets_merge = assets_merge
-        self._fh_merged = fh_merged # protect from destruction
-        self._r_exec = environment.R('R')
-
-
+            
+        with tempfile.NamedTemporaryFile(dir=self.tempdir, suffix='.csv', delete=False) as fh_merged:
+            csv_w = csv.writer(fh_merged)
+            self.asset_merge = rnaseq.SavedCSV(fh_merged.name)
+            self._r_exec = environment.R('R')
+            csv_w.writerow(['',] + ['V%i'%x for x in range(1,7)])
+            with open(PHAGEGFF) as gff_fh:
+                csv_r = csv.reader(gff_fh, delimiter="\t")
+                for row in csv_r:
+                    if row[0].startswith('#'):
+                        continue
+                    if row[2] != 'CDS':
+                        continue
+                    entry_id = re.sub('ID="(.+?)".+', '\\1', row[8])
+                    count_row = [entry_id, ] + [int(random.lognormvariate(4, 2)) for x in range(6)]
+                    csv_w.writerow(count_row)
+            
+                    
     def tearDown(self):
-        for read1_fh, read2_fh in self._all_reads_fh:
-            read1_fh.close()
-            read2_fh.close()
         shutil.rmtree(self.tempdir)
 
 
-    @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
-                          environment.Executable.ispresent('htseq-count') and \
-                          environment.Executable.ispresent('R') and \
+    @unittest.skipIf(not (environment.Executable.ispresent('R') and \
                           environment.R('R').packageversion_or_none('DESeq') is not None),
-                     'bowtie2-build, htseq-count, R (with package "DESeq") must be in the PATH')
+                     'R (with package "DESeq") must be in the PATH')
     def test_StepDESeq(self):
         deseq = rnaseq.DESeq(self._r_exec)
         self.assertEqual(set((rnaseq.ACTIVITY.DIFFEXP,)), set(deseq.activities))
         AssetsDE = railroadtracks.model.diffexp.AssetsDifferentialExpression
         fh = tempfile.NamedTemporaryFile()
-        assets_merge = self._assets_merge
-        source = AssetsDE.Source(assets_merge.target.counts, 
+        source = AssetsDE.Source(self.asset_merge, 
                                  core.File(self._sampleinfo_fh.name))
         target = AssetsDE.Target(core.File(fh.name))
         assets = AssetsDE(source,
@@ -1281,18 +1247,15 @@ class ModelDExpressionTestCase(unittest.TestCase):
         cmd, returncode = deseq.run(assets, parameters=('--dispersion-fittype=local', ))
         self.assertEquals(0, returncode)
 
-    @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
-                          environment.Executable.ispresent('htseq-count') and \
-                          environment.Executable.ispresent('R') and \
+    @unittest.skipIf(not (environment.Executable.ispresent('R') and \
                           environment.R('R').packageversion_or_none('DESeq2') is not None),
-                     'bowtie2-build, htseq-count, R (with package "DESeq2") must be in the PATH')
+                     'R (with package "DESeq2") must be in the PATH')
     def test_StepDESeq2(self):
         deseq2 = rnaseq.DESeq2(self._r_exec)
         self.assertEqual(set((rnaseq.ACTIVITY.DIFFEXP,)), set(deseq2.activities))
         AssetsDE = railroadtracks.model.diffexp.AssetsDifferentialExpression
         fh = tempfile.NamedTemporaryFile()
-        assets_merge = self._assets_merge
-        source = AssetsDE.Source(assets_merge.target.counts, 
+        source = AssetsDE.Source(self.asset_merge,
                                  core.File(self._sampleinfo_fh.name))
         target = AssetsDE.Target(core.File(fh.name))
         assets = AssetsDE(source,
@@ -1301,18 +1264,15 @@ class ModelDExpressionTestCase(unittest.TestCase):
         self.assertEquals(0, returncode)
 
 
-    @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
-                          environment.Executable.ispresent('htseq-count') and \
-                          environment.Executable.ispresent('R') and \
-                          environment.R('R').packageversion_or_none('edgeR') is not None),
-                     'bowtie2-build, htseq-count, R (with package "edgeR") must be in the PATH')
+    @unittest.skipIf(not (environment.Executable.ispresent('R') and \
+                          environment.R('R').packageversion_or_none('DESeq2') is not None),
+                     'R (with package "edgeR") must be in the PATH')
     def test_StepEdgeR(self):
         edger = rnaseq.EdgeR(self._r_exec)
         self.assertEqual(set((rnaseq.ACTIVITY.DIFFEXP,)), set(edger.activities))
         AssetsDE = railroadtracks.model.diffexp.AssetsDifferentialExpression
         fh = tempfile.NamedTemporaryFile()
-        assets_merge = self._assets_merge
-        source = AssetsDE.Source(assets_merge.target.counts, 
+        source = AssetsDE.Source(self.asset_merge,
                                  core.File(self._sampleinfo_fh.name))
         target = AssetsDE.Target(core.File(fh.name))
         assets = AssetsDE(source,
@@ -1320,18 +1280,16 @@ class ModelDExpressionTestCase(unittest.TestCase):
         cmd, returncode = edger.run(assets)
         self.assertEquals(0, returncode)
 
-    @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
-                          environment.Executable.ispresent('htseq-count') and \
-                          environment.Executable.ispresent('R') and \
+
+    @unittest.skipIf(not (environment.Executable.ispresent('R') and \
                           environment.R('R').packageversion_or_none('limma') is not None),
-                     'bowtie2-build, htseq-count, R (with package "limma") must be in the PATH')
+                     'R (with package "limma") must be in the PATH')
     def test_StepLimmaVoom(self):
         voom = rnaseq.LimmaVoom(self._r_exec)
         self.assertEqual(set((rnaseq.ACTIVITY.DIFFEXP,)), set(voom.activities))
         AssetsDE = railroadtracks.model.diffexp.AssetsDifferentialExpression
         fh = tempfile.NamedTemporaryFile()
-        assets_merge = self._assets_merge
-        source = AssetsDE.Source(assets_merge.target.counts, 
+        source = AssetsDE.Source(self.asset_merge,
                                  core.File(self._sampleinfo_fh.name))
         target = AssetsDE.Target(core.File(fh.name))
         assets = AssetsDE(source,
