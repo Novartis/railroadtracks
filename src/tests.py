@@ -1209,7 +1209,7 @@ class ModelDExpressionTestCase(unittest.TestCase):
         self._sampleinfo_fh = sampleinfo_fh
         with open(PHAGEFASTA) as fasta_fh:
             reference = next(railroadtracks.model.simulate.readfasta_iter(fasta_fh))
-            
+        random.seed(123)    
         with tempfile.NamedTemporaryFile(dir=self.tempdir, suffix='.csv', delete=False) as fh_merged:
             csv_w = csv.writer(fh_merged)
             self.asset_merge = rnaseq.SavedCSV(fh_merged.name)
