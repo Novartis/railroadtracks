@@ -2003,6 +2003,48 @@ class EasyTestCase(unittest.TestCase):
         self.assertEqual(bowtie2index.activities, parent_task.call.step.activities)
         self.assertEqual(bowtie2index._name, parent_task.call.step._name)
 
+    @unittest.skipIf(not environment.Executable.ispresent('bowtie2-build'),
+                     'bowtie2-build is not in the PATH')
+    def test_Task_withNone(self):
+        project = easy.Project(rnaseq, self.wd)
+        #
+        packagedir = os.path.dirname(railroadtracks.__file__)
+        PHAGEFASTA = os.path.join(packagedir, 'EF204940.FASTA')
+        bowtie2index_exec = environment.Executable('bowtie2-build')
+        bowtie2align_exec = environment.Executable('bowtie2')
+
+        bowtie2index = rnaseq.Bowtie2Build(bowtie2index_exec.path)
+        reference_fn = PHAGEFASTA
+        task_index = project.add_task(bowtie2index, 
+                                      bowtie2index.Assets(bowtie2index.Assets.Source(rnaseq.SavedFASTA(reference_fn))))
+
+        bowtie2align = rnaseq.Bowtie2(bowtie2align_exec.path)
+        Assets = bowtie2align.Assets
+        alignment_tasks = list()
+        for read1_name, read2_name in (('f1_1.fq', None),
+                                       ('f2_1.fq', None)):
+            assets = Assets(Assets.Source(task_index.call.assets.target.indexfilepattern, 
+                                          rnaseq.FASTQPossiblyGzipCompressed(read1_name),
+                                          rnaseq.FASTQPossiblyGzipCompressed(read2_name)),
+                            None)
+            alignment_tasks.append(project.add_task(bowtie2align, assets))
+
+        # find all child
+        res = task_index.all_child_tasks()
+        s1 = set(x.task_id.id for x in alignment_tasks)
+        s2 = set(x.task_id.id for x in res)
+        self.assertEqual(0, len(s1.difference(s2)))
+        self.assertEqual(0, len(s2.difference(s1)))
+
+        # find the parents of an alignment
+        task = next(iter(alignment_tasks))
+        parent_taskset = task.parent_tasks()
+        # only one parent (the indexing step)
+        self.assertEqual(1, len(parent_taskset))
+        parent_task = next(iter(parent_taskset))
+        self.assertEqual(bowtie2index.activities, parent_task.call.step.activities)
+        self.assertEqual(bowtie2index._name, parent_task.call.step._name)
+
 # Test the writing of recipes
 from railroadtracks import easy
 
