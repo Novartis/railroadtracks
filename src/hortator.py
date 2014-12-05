@@ -176,7 +176,7 @@ class StepGraph(object):
         :type assets: a :class:`core.AssetStep` (or of child classes) object
         :param parameters: Parameters for the step
         :type parameters: A sequence of :class:`str` elements
-        :param tag: A tag to differentiate repetitions of the exact same task
+        :param tag: A tag to differentiate repetitions of the exact same task.
         
         :rtype: :class:`StepConcrete_DbEntry` as the entry added to the database
         """
@@ -189,7 +189,8 @@ class StepGraph(object):
         id_stepvariant = self._cache.id_step_variant(step,
                                                      step.activities)
         # undefined sources is not accepted
-        if any(not x._defined for x in assets.source):
+        # (exceptions being the source assets that are optionally None)
+        if any((not y.allownone and not x._defined) for x,y in zip(assets.source, assets.source._sources)):
             raise ValueError('All sources must be defined.')
 
         # retrieve or create the stepconcrete
@@ -241,8 +242,14 @@ class StepGraph(object):
         self._cache._insert_stepconcrete2storedentities(labelnamepairs, 'target', stepconcrete_id.id)
         self._cache.connection.commit()
 
+        sources = list()
+        for x in assets.source:
+            if x._defined:
+                for y in x:
+                    sources.append(y)
+
         self._update_graph(id_stepvariant, stepconcrete_id.id, 
-                           tuple(y for x in assets.source for y in x), 
+                           tuple(sources),
                            tuple(y for x in assets.target for y in x))
         return stepconcrete_id
 
@@ -1595,14 +1602,18 @@ class PersistentTaskList(object):
                 sql = sql_ss
             else:
                 sequence_id = None
-                for se_i, cn in enumerate(asset.iteritems()):
-                    if se_i > 0:
-                        raise Exception("Only FileSequence object should have several saved entities.")
-                    # ensure the that the stored IDs are tracked in the DB
-                    se_id = self.id_stored_entity(*cn).id
+                if not asset._defined:
+                    # if the asset is not defined here, it can / should only be because it is allowed to be None
+                    se_id = self.id_stored_entity(type(asset), None).id
+                else:
+                    for se_i, cn in enumerate(asset.iteritems()):
+                        if se_i > 0:
+                            raise Exception("Only FileSequence object should have several saved entities.")
+                        # ensure the that the stored IDs are tracked in the DB
+                        se_id = self.id_stored_entity(*cn).id
                 etid = (label, 
                         step_concrete_id, 
-                        self.id_stored_entity(*cn).id
+                        se_id
                         # stored_sequence
                 )
                 sql = sql_se

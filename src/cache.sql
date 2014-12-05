@@ -115,7 +115,7 @@ CREATE TABLE step_parameters (
 CREATE TABLE stored_entity (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   classname TEXT NOT NULL, -- The Python class name modeling the stored entity
-  entityname TEXT NOT NULL, -- the id /might/ be part of the pattern, e.g. ('%(db_id)i.fasta')
+  entityname TEXT, -- this can be NULL (in case associated asset allows None), and the id /might/ be part of the pattern, e.g. ('%(db_id)i.fasta')
   -- step_parameter_id INTEGER,
   -- FOREIGN KEY(step_parameter_id) REFERENCES step_parameter(id)
   UNIQUE(entityname) -- FIXME UNIQUE(classname, entityname)
