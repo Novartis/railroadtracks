@@ -68,7 +68,7 @@ presentation-package: presentation
 notebooks:
 	@echo "Building the IPython notebooks..."
 	mkdir -p _static/notebooks
-	@cd _static/notebooks && ipython nbconvert railroadtracks_tutorial.ipynb
+	@cd _static/notebooks && runipy -o railroadtracks_tutorial.ipynb && ipython nbconvert railroadtracks_tutorial.ipynb
 	@echo "Sanitizing the IPython notebooks"
 	@cd _static/notebooks && find . -name '*.ipynb' -exec sed -i '' "s/${USER}/thisuser/g" '{}' \;
 	@cd _static/notebooks && find . -name '*.html' -exec sed -i '' "s/${USER}/thisuser/g" '{}' \;
