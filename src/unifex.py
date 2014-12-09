@@ -211,9 +211,14 @@ def unified_exec_run(args, steplist, msg=[]):
     tmp.extend('%s: %s%s' % (k, str(v), os.linesep) for k,v in sources_dict.items())
     logger.debug(os.linesep.join(tmp))
     sources = tuple(sources_dict.get(f) for f in Assets.Source._fields)
-    if None in sources:
+    sources_undefined = list()
+    for src, assetattr, assetname in zip(sources, Assets.Source._sources, Assets.Source._fields):
+        if src is None:
+            if not assetattr.allownone:
+                sources_undefined.append(assetname)
+    if len(sources_undefined) > 0:
         msg.append('The following sources must be defined (and are missing):\n'+\
-                   '\n'.join('- %s' % (y) for x,y in enumerate(Assets.Source._fields) if sources[x] is None))
+                   '\n'.join('- %s' % sources_undefined))
 
     # extract the targets from the args
     targets_dict = _extract_argdict(args.target)
