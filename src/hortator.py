@@ -1605,8 +1605,11 @@ class PersistentTaskList(object):
             else:
                 sequence_id = None
                 if asset is None:
-                    # if the asset is not defined here, it can / should only be because it is allowed to be None
-                    se_id = self.id_stored_entity(type(asset), None).id
+                    # if the asset is not defined here, 
+                    # it can / should only be the case
+                    # because it is allowed to be None
+                    continue
+                    #se_id = self.id_stored_entity(type(asset), None).id
                 else:
                     for se_i, cn in enumerate(asset.iteritems()):
                         if se_i > 0:

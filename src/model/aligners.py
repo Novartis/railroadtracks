@@ -421,7 +421,7 @@ class Bowtie2(AlignerAbstract):
         if source.read1 is None or not isinstance(source.read1, core.SavedEntityAbstract):
             raise ValueError("Incorrect value %s for read1" % source.read1)
 
-        if source.read2._defined is None:
+        if source.read2 is None:
             # single reads
             cmd_sub = ('-U %s' % source.read1.name, )
         else:
