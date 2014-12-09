@@ -244,7 +244,7 @@ class StepGraph(object):
 
         sources = list()
         for x in assets.source:
-            if x._defined:
+            if x is not None:
                 for y in x:
                     sources.append(y)
 
@@ -607,7 +607,9 @@ class StoredEntity(object):
         self.clsname = clsname
         self.entityname = entityname
     def resurrect(self, model):
-        if '.' in self.clsname:
+        if self.clsname == 'NoneType':
+            return None
+        elif '.' in self.clsname:
             module_name, cls_name = self.clsname.rsplit('.', 1)
             module = import_module(module_name)
         else:
@@ -1602,7 +1604,7 @@ class PersistentTaskList(object):
                 sql = sql_ss
             else:
                 sequence_id = None
-                if not asset._defined:
+                if asset is None:
                     # if the asset is not defined here, it can / should only be because it is allowed to be None
                     se_id = self.id_stored_entity(type(asset), None).id
                 else:
