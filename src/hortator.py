@@ -1401,8 +1401,10 @@ class PersistentTaskList(object):
             sql_se = sql_template % {'se': '=?', 'ss': ' IS NULL'}
             sql_ss = sql_template % {'ss': '=?', 'se': ' IS NULL'}
             candidates = None # candidate known tasks
-            for (label, asset) in zip(sources._fields, sources):
+            for (label, asset, assetattr) in zip(sources._fields, sources, source._sources):
                 # loop over the source assets
+                if assetattr.allownone and not asset._defined:
+                    continue
                 asset_items = tuple(cn for cn in asset.iteritems())
                 if isinstance(asset, core.FileSequence):
                     # if a sequence we also need to ensure that the sequence itself is tracked
