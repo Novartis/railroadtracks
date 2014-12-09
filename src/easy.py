@@ -864,7 +864,7 @@ def command_line(project, stepconcrete_id, stepobj, assets, parameters=()):
             continue
         for item in src:
             field_items.append((field,item))
-    cmd.extend('%s=%s' % field_items)
+    cmd.extend('%s=%s' % x for x in field_items)
     cmd.append('-t')
     cmd.extend('%s=%s' % (field,item) for field,src in zip(assets.target._fields, assets.target) for item in src)
     if len(parameters) > 0:
