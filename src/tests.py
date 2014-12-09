@@ -2025,7 +2025,7 @@ class EasyTestCase(unittest.TestCase):
                                        ('f2_1.fq', None)):
             assets = Assets(Assets.Source(task_index.call.assets.target.indexfilepattern, 
                                           rnaseq.FASTQPossiblyGzipCompressed(read1_name),
-                                          rnaseq.FASTQPossiblyGzipCompressed(read2_name)),
+                                          read2_name),
                             None)
             alignment_tasks.append(project.add_task(bowtie2align, assets))
 
