@@ -858,7 +858,13 @@ def command_line(project, stepconcrete_id, stepobj, assets, parameters=()):
         cmd.append(executable)
     cmd.extend(['--module', stepobj.__class__.__module__])
     cmd.append('-s')
-    cmd.extend('%s=%s' % (field,item) for field,src in zip(assets.source._fields, assets.source) for item in src)
+    field_items = list()
+    for field,src in zip(assets.source._fields, assets.source):
+        if src is None:
+            continue
+        for item in src:
+            field_items.append((field,item))
+    cmd.extend('%s=%s' % field_items)
     cmd.append('-t')
     cmd.extend('%s=%s' % (field,item) for field,src in zip(assets.target._fields, assets.target) for item in src)
     if len(parameters) > 0:
