@@ -6,6 +6,7 @@ matrix:
       - version_0.3.x
 python:
   - "2.7"
+  - "3.4"
 before_install:
   - sudo apt-add-repository -y "deb http://cran.rstudio.com/bin/linux/ubuntu `lsb_release -cs`/"
   - sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
@@ -56,6 +57,14 @@ install:
   - make
   - export PATH=`pwd`:${PATH}
   - cd ../
+  # STAR
+  - star_deps='2.4.0h1'
+  - wget https://github.com/alexdobin/STAR/archive/STAR_${star_deps}.tar.gz
+  - tar -xzf STAR_${star_deps}.tar.gz 
+  - cd STAR_${star_deps}/source
+  - make STAR
+  - export PATH=`pwd`:${PATH}
+  - cd ../..
   # HTSeq
   - pip install HTSeq
   # install railroadtracks
