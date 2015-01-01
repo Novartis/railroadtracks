@@ -61,7 +61,7 @@ install:
   - star_deps='2.4.0h1'
   - wget https://github.com/alexdobin/STAR/archive/STAR_${star_deps}.tar.gz
   - tar -xzf STAR_${star_deps}.tar.gz 
-  - cd STAR_${star_deps}/source
+  - cd STAR-STAR_${star_deps}/source
   - make STAR
   - export PATH=`pwd`:${PATH}
   - cd ../..
