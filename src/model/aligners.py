@@ -107,7 +107,7 @@ class BowtieBuild(IndexerAbstract):
             except OSError as ose:
                 raise UnifexError("""Command: %s
                 %s""" % (' '.join(cmd), ose))
-            m = re.match('^.+? version ([^ \n]+).*', tmp)
+            m = re.match(b'^.+? version ([^ \n]+).*', tmp)
             self._version = m.groups()[0]
         return self._version
 
@@ -169,7 +169,7 @@ class SailfishIndex(IndexerAbstract):
             except OSError as ose:
                 raise UnifexError("""Command: %s
                 %s""" % (' '.join(cmd), ose))
-            m = re.match('^version : (.+)', tmp)
+            m = re.match(b'^version : (.+)', tmp)
             self._version = m.groups()[0]
         return self._version
 
@@ -212,9 +212,9 @@ def _bwa_version(execpath):
             # BWA is returning 1
             assert returncode==1, "BWA should have been failing with return code 1 (and it did not)"
             # now dig the information out (note: the subprocess has closed the file - open it again)
-            with open(logfile.name) as logfile:
+            with open(logfile.name, mode='rb') as logfile:
                 for row in logfile:
-                    m = re.match('^Version: (.+)$', row)
+                    m = re.match(b'^Version: (.+)$', row)
                     if m is not None:
                         break
         except OSError as ose:
@@ -315,7 +315,7 @@ class Bowtie2Build(IndexerAbstract):
             except OSError as ose:
                 raise UnifexError("""Command: %s
                 %s""" % (' '.join(cmd), ose))
-            m = re.match('^.+? version ([^ \n]+).*', tmp)
+            m = re.match(b'^.+? version ([^ \n]+).*', tmp)
             self._version = m.groups()[0]
         return self._version
 
@@ -397,7 +397,7 @@ class Bowtie2(AlignerAbstract):
                 raise UnifexError("""Command: %s
                 %s""" % (' '.join(cmd), ose))
 
-            m = re.match('^.+? version ([^ \n]+).*', res)
+            m = re.match(b'^.+? version ([^ \n]+).*', res)
             if m is None:
                 raise RuntimeError('Could not find the version number.')
             self._version = m.groups()[0]
@@ -523,7 +523,7 @@ class Bowtie(AlignerAbstract):
                 raise UnifexError("""Command: %s
                 %s""" % (' '.join(cmd), ose))
 
-            m = re.match('^.+? version ([^ \n]+).*', res)
+            m = re.match(b'^.+? version ([^ \n]+).*', res)
             if m is None:
                 raise RuntimeError('Could not find the version number.')
             self._version = m.groups()[0]
@@ -903,7 +903,7 @@ class GsnapIndex(IndexerAbstract):
                     %s""" % (' '.join(cmd), ose))
             m = None
             for row in proc.stdout:
-                m = re.match('^.+? version ([0-9-]+)\.$', row)
+                m = re.match(b'^.+? version ([0-9-]+)\.$', row)
                 if m is not None:
                     break
             if m is None:
@@ -969,7 +969,7 @@ class GsnapAlign(AlignerAbstract):
                     raise UnifexError("""Command: %s
                     %s""" % (' '.join(cmd), ose))
             row = next(proc.stderr)
-            m = re.match('^.+ version ([^ ]+) .+$', row)
+            m = re.match(b'^.+ version ([^ ]+) .+$', row)
             self._version = m.groups()[0]
         return self._version
 
@@ -1064,7 +1064,7 @@ class TopHat(core.StepAbstract):
                 raise UnifexError("""Command: %s
                 %s""" % (' '.join(cmd), ose))
 
-            m = re.match('^.+? v([0-9][^ \n]+).*', res)
+            m = re.match(b'^.+? v([0-9][^ \n]+).*', res)
             if m is None:
                 raise RuntimeError('Could not find the version number.')
             self._version = m.groups()[0]

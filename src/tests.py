@@ -293,7 +293,7 @@ class ModelUtilsTestCase(unittest.TestCase):
         self.assertEqual(fh_bam.name, fh_bam_again.name)
         self.assertTrue(fh_bam.name.endswith('.bam'))
         # this is round trip for the SAM file
-        with open(fn) as fh_bam_orig:
+        with open(fn, mode='rb') as fh_bam_orig:
             self.assertEqual(fh_bam_orig.read(), fh_bam.read())
 
     @unittest.skipIf(not environment.Executable.ispresent('bowtie2-build'),
@@ -571,7 +571,7 @@ class ModelIndexTestCase(unittest.TestCase):
         runner = rnaseq.Bowtie2Build(execname)
         #FIXME: test version
         version = runner.version
-        self.assertTrue(isinstance(version, str))
+        self.assertTrue(isinstance(version, bytes))
         self.assertEqual(set(runner.activities), set((rnaseq.ACTIVITY.INDEX, )))
         assets, cmd, returncode = _build_StepIndex(rnaseq.Bowtie2Build, execname,
                                                    os.path.join(self.tempdir, 'reference'))
@@ -600,7 +600,7 @@ class ModelIndexTestCase(unittest.TestCase):
         runner = rnaseq.BWAIndex(execname)
         #FIXME: test version
         version = runner.version
-        self.assertTrue(isinstance(version, str))
+        self.assertTrue(isinstance(version, bytes))
         self.assertEqual(set(runner.activities), set((rnaseq.ACTIVITY.INDEX, )))
         assets, cmd, returncode = _build_StepIndex(rnaseq.BWAIndex, execname,
                                                    os.path.join(self.tempdir, 'reference'))
@@ -696,7 +696,7 @@ class ModelAlignTestCase(unittest.TestCase):
         assets, cmd, returncode, fh = _build_UpToAlign(cls_index, executable_index,
                                                        cls_align, executable_align, self._read1_fh,
                                                        os.path.join(self.tempdir, 'reference'))
-        self.assertTrue(isinstance(runner.version, str))
+        self.assertTrue(isinstance(runner.version, bytes))
         self.assertEqual(0, returncode)
         # FIXME: check that the alignment file contains what it should
         self.assertTrue(os.path.exists(fh.name))
@@ -899,7 +899,7 @@ class ModelHandleBAMTestCase(unittest.TestCase):
         samsort_byID = SamtoolsSorterByID(executable_sort)
         self.assertEqual(set((rnaseq.ACTIVITY.SORT,)), set(samsort_byID.activities))
         # mostly to check that version is working
-        self.assertTrue(isinstance(samsort_byID.version, str))
+        self.assertTrue(isinstance(samsort_byID.version, bytes))
         source = AssetsSorter.Source(self._assets_align.target.alignment)
         fh = tempfile.NamedTemporaryFile(suffix='.bam')
         sortedreads = rnaseq.BAMFile(fh.name)
@@ -919,7 +919,7 @@ class ModelHandleBAMTestCase(unittest.TestCase):
         extractunaligned = rnaseq.SamtoolsExtractUnaligned(executable_sort)
         self.assertEqual(set((rnaseq.ACTIVITY.UTILITY,)), set(extractunaligned.activities))
         # mostly to check that version is working
-        self.assertTrue(isinstance(extractunaligned.version, str))
+        self.assertTrue(isinstance(extractunaligned.version, bytes))
         Assets = SamtoolsExtractUnaligned.Assets
         source = Assets.Source(self._assets_align.target.alignment)
         fh = tempfile.NamedTemporaryFile(suffix='.bam')
@@ -940,7 +940,7 @@ class ModelHandleBAMTestCase(unittest.TestCase):
         readfilter = SamtoolsFilter(executable_sort)
         self.assertEqual(set((railroadtracks.model.files.ACTIVITY.FILTERREADS,)), set(readfilter.activities))
         # mostly to check that version is working
-        self.assertTrue(isinstance(readfilter.version, str))
+        self.assertTrue(isinstance(readfilter.version, bytes))
         Assets = SamtoolsFilter.Assets
         source = Assets.Source(self._assets_align.target.alignment)
         # 

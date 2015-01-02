@@ -25,6 +25,10 @@ import subprocess
 from railroadtracks import core, environment
 from railroadtracks.core import SavedEntityAbstract, File, FileSequence
 
+import sys
+if sys.version_info[0] > 2:
+    from functools import reduce
+
 class ACTIVITY(core.Enum):
     """ Activities that can be performed by the different steps modeled.
     (note: steps can combine several activities - the most obvious example is
@@ -368,7 +372,7 @@ def samtools_getversion(execpath):
                             stderr=subprocess.PIPE)
 
     for row in proc.stderr:
-        m = re.match('^Version: ([^ \n]+).*$', row)
+        m = re.match(b'^Version: ([^ \n]+).*$', row)
         if m is not None:
             break
     if m is None:
