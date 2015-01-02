@@ -77,7 +77,7 @@ class R(Executable):
         if self.__version is None:
             proc = subprocess.Popen((self.path, '--version'), stdout=subprocess.PIPE)
             version = proc.stdout.readline()
-            self.__version = re.sub('R version (.+)', '\\1', version)
+            self.__version = re.sub(b'R version (.+)', b'\\1', version)
         logger.info('R version is %s' % self.__version)
         return self.__version    
     version = property(getversion, None, None, 'R version')
@@ -158,7 +158,8 @@ class R(Executable):
             delete_tempfile = False
         else:
             delete_tempfile = True
-        with tempfile.NamedTemporaryFile(delete=delete_tempfile) as fh_out:
+        with tempfile.NamedTemporaryFile(delete=delete_tempfile,
+                                         mode='wt') as fh_out:
             var_in_json = json.dump(var_in, fh_out)
             fh_out.flush()
             if not delete_tempfile:
@@ -174,7 +175,10 @@ class R(Executable):
                 raise Exception("R returned non-zero exit status %i" % returncode)
         return returncode
 
-    def run(self, code):
+    def run(self, code,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE):
         """ R arbitrary code in a subprocess. 
 
         :param code: a string with R code
@@ -183,11 +187,12 @@ class R(Executable):
         """
         cmd = (self.path, '--slave',)
         with open(os.devnull, "w") as fnull:
-            proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, 
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE)
-        stdout, stderr = proc.communicate(input=code)
-        logger.debug(stderr)
+            proc = subprocess.Popen(cmd, stdin=stdin, 
+                                    stdout=stdout,
+                                    stderr=stderr)
+        stdout, stderr = proc.communicate(input=code.encode('ascii'))
+        if proc.returncode != 0:
+            logger.warning(stderr)
         return proc.returncode
         
 

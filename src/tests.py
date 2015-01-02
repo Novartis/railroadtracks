@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 import os, tempfile
 import subprocess
@@ -28,12 +29,19 @@ import shutil
 import gzip
 import re
 import random
-from . import core
-from . import hortator
-from . import rnaseq
-from . import environment
-from . import unifex
-from . import easy
+import logging
+from railroadtracks import (core, 
+                            hortator,
+                            rnaseq,
+                            environment,
+                            unifex,
+                            easy)
+
+try:
+    import ngs_plumbing
+    has_ngsp = True
+except ImportError:
+    has_ngsp = False
 
 has_R = environment.Executable.ispresent('R')
 
@@ -42,6 +50,10 @@ PHAGEGFF = railroadtracks.model.simulate.PHAGEGFF
 PHAGEGTF = railroadtracks.model.simulate.PHAGEGTF
 PHAGEFASTA = railroadtracks.model.simulate.PHAGEFASTA
 
+if sys.version_info[0] < 3:
+    linesep = os.linesep
+else:
+    linesep = bytes(os.linesep, encoding='ascii')
 
 class EnvironmentTestCase(unittest.TestCase):
 
@@ -83,7 +95,7 @@ class EnvironmentTestCase(unittest.TestCase):
                       'output_fn': fh_out.name}
             r_exec.run_snippet(code, var_in)
             res = fh_out.read()
-        self.assertEquals('4', res.rstrip())
+        self.assertEqual(b'4', res.rstrip())
 
 
 class ModelSimulateTestCase(unittest.TestCase):
@@ -119,7 +131,7 @@ FRAG_METHOD     UR
         fse = rnaseq.FluxsimulatorExpression()
         assets = self._test_FluxsimulatorExpression(fse)
         cmd, returncode = fse.run(assets, parameters=('--NB-MOLECULES', '1000'))
-        self.assertEquals(0, returncode)
+        self.assertEqual(0, returncode)
         # check that the target file is not empty
         self.assertGreater(os.stat(assets.target.parameters_and_pro.name + '.pro').st_size, 0)
 
@@ -144,7 +156,7 @@ FRAG_METHOD     UR
                             rnaseq.FASTQPossiblyGzipCompressed(read2_fn),
                             core.File(lib_fn)))
         cmd, returncode = fss.run(assets, parameters=('--read-number', '1000'))
-        self.assertEquals(0, returncode)
+        self.assertEqual(0, returncode)
         # check that the target files are not empty
         self.assertGreater(os.stat(assets.target.parameters_and_pro.name + '.pro').st_size, 0)
         self.assertGreater(os.stat(read1_fn).st_size, 0)
@@ -200,8 +212,10 @@ class AssetsTestCase(unittest.TestCase):
         # (modifying an asset value will be possible though)
         self.assertRaises(AttributeError, setattr, undefoo, 'bar', 123)
         undefoo.bar.name = '123'
-        self.assertEquals('123', undefoo.bar.name)
+        self.assertEqual('123', undefoo.bar.name)
 
+    @unittest.skipIf(not has_ngsp,
+                     'The Python package ngs-plumbing is missing.')
     def test_GzipFastqFilePair(self):
         NFRAGMENTS_MATCH = 300
         read1_fh = tempfile.NamedTemporaryFile(prefix='read1', suffix='.fq.gz', dir=self.tempdir, delete=False)
@@ -265,7 +279,7 @@ class ModelUtilsTestCase(unittest.TestCase):
         fh_sam = railroadtracks.model.files.ensure_sam(fn)
         self.assertTrue(fh_sam.name.endswith('.sam'))
         fh_sam_again = railroadtracks.model.files.ensure_sam(fh_sam.name)
-        self.assertEquals(fh_sam.name, fh_sam_again.name)
+        self.assertEqual(fh_sam.name, fh_sam_again.name)
 
     @unittest.skipIf(not environment.Executable.ispresent('bowtie2-build'),
                      'bowtie2-build is not in the PATH')
@@ -276,7 +290,7 @@ class ModelUtilsTestCase(unittest.TestCase):
         fh_sam = railroadtracks.model.files.ensure_sam(fn)
         fh_bam = railroadtracks.model.files.ensure_bam(fh_sam.name)
         fh_bam_again = railroadtracks.model.files.ensure_bam(fh_bam.name)
-        self.assertEquals(fh_bam.name, fh_bam_again.name)
+        self.assertEqual(fh_bam.name, fh_bam_again.name)
         self.assertTrue(fh_bam.name.endswith('.bam'))
         # this is round trip for the SAM file
         with open(fn) as fh_bam_orig:
@@ -345,9 +359,9 @@ class UnifexTestCase(unittest.TestCase):
         arglist = (('a=123', 'b=abc', 'a=456'))
         argdict = unifex._extract_argdict(arglist)
         # 
-        self.assertEquals(set(argdict.keys()), set(('a','b')))
-        self.assertEquals(argdict['a'], ['123','456'])
-        self.assertEquals(argdict['b'], ['abc',])
+        self.assertEqual(set(argdict.keys()), set(('a','b')))
+        self.assertEqual(argdict['a'], ['123','456'])
+        self.assertEqual(argdict['b'], ['abc',])
         # test round trip
         arglist2 = unifex._extract_arglist(argdict)
         self.assertEqual(list(arglist).sort(), list(arglist2).sort())
@@ -449,7 +463,8 @@ class ModelTestCase(unittest.TestCase):
                 return res
 
         cs = CatStep()
-        inputs = (tempfile.NamedTemporaryFile(), tempfile.NamedTemporaryFile())
+        inputs = (tempfile.NamedTemporaryFile(mode='w+'), 
+                  tempfile.NamedTemporaryFile(mode='w+'))
         inputs[0].write('abc')
         inputs[0].flush()
         inputs[1].write('def')
@@ -459,7 +474,7 @@ class ModelTestCase(unittest.TestCase):
         targets = {'output': tuple(x.name for x in outputs)}
         res = cs.run(sources, targets, '')
         out_res = outputs[0].readlines()
-        self.assertEqual(['abcdef'], out_res)
+        self.assertEqual([b'abcdef'], out_res)
 
 
 
@@ -648,7 +663,7 @@ class ModelAlignTestCase(unittest.TestCase):
         # reads from a random reference (should not match)
         randint = railroadtracks.model.simulate.random.randint
         rand_reference = railroadtracks.model.simulate.Entry('> Random DNA',
-                                                             ''.join('ATCG'[randint(0, 3)] for x in range(500)))
+                                                             bytearray(''.join('ATCG'[randint(0, 3)] for x in range(500)), 'ascii'))
         self._read1_fh, self._read2_fh = railroadtracks.model.simulate.randomPEreads(read1_fh, read2_fh,
                                                                                      rand_reference,
                                                                                      n = NFRAGMENTS_NOMATCH)
@@ -682,7 +697,7 @@ class ModelAlignTestCase(unittest.TestCase):
                                                        cls_align, executable_align, self._read1_fh,
                                                        os.path.join(self.tempdir, 'reference'))
         self.assertTrue(isinstance(runner.version, str))
-        self.assertEquals(0, returncode)
+        self.assertEqual(0, returncode)
         # FIXME: check that the alignment file contains what it should
         self.assertTrue(os.path.exists(fh.name))
         # check that the target file is not empty
@@ -857,7 +872,7 @@ class ModelHandleBAMTestCase(unittest.TestCase):
         # reads from a random reference (should not match)
         randint = railroadtracks.model.simulate.random.randint
         rand_reference = railroadtracks.model.simulate.Entry('> Random DNA',
-                                                             ''.join('ATCG'[randint(0, 3)] for x in range(500)))
+                                                             bytearray(''.join('ATCG'[randint(0, 3)] for x in range(500)), 'ascii'))
         self._read1_fh, self._read2_fh = railroadtracks.model.simulate.randomPEreads(read1_fh, read2_fh,
                                                                                      rand_reference,
                                                                                      n = NFRAGMENTS_NOMATCH)
@@ -1080,15 +1095,15 @@ class ModelQuantificationTestCase(unittest.TestCase):
 class ModelColumnMergerTestCase(unittest.TestCase):
 
     def test_merge(self):
-        with tempfile.NamedTemporaryFile(suffix=".csv") as fh_col1, \
-             tempfile.NamedTemporaryFile(suffix=".csv") as fh_col2, \
-             tempfile.NamedTemporaryFile(suffix=".csv") as fh_merged:
+        with tempfile.NamedTemporaryFile(mode='w+', suffix=".csv") as fh_col1, \
+             tempfile.NamedTemporaryFile(mode='w+', suffix=".csv") as fh_col2, \
+             tempfile.NamedTemporaryFile(mode='w+', suffix=".csv") as fh_merged:
             fh_col1_csv = csv.writer(fh_col1)
             fh_col2_csv = csv.writer(fh_col2)
-            for x in (1,2,3):
+            for x in ('1','2','3'):
                 fh_col1_csv.writerow([x])
             fh_col1.seek(0)
-            for x in (4,5,6):
+            for x in ('4','5','6'):
                 fh_col2_csv.writerow([x])
             fh_col2.seek(0)
             ColumnMerger = rnaseq.ColumnMerger
@@ -1108,16 +1123,16 @@ class ModelColumnMergerTestCase(unittest.TestCase):
                               '3,6'), tuple(x.rstrip() for x in fh_merged))
 
     def test_merge_withIDs(self):
-        with tempfile.NamedTemporaryFile(suffix=".csv") as fh_col1, \
-             tempfile.NamedTemporaryFile(suffix=".csv") as fh_col2, \
-             tempfile.NamedTemporaryFile(suffix=".csv") as fh_merged:
+        with tempfile.NamedTemporaryFile(suffix=".csv", mode='w+') as fh_col1, \
+             tempfile.NamedTemporaryFile(suffix=".csv", mode='w+') as fh_col2, \
+             tempfile.NamedTemporaryFile(suffix=".csv", mode='w+') as fh_merged:
             fh_col1_csv = csv.writer(fh_col1)
             fh_col2_csv = csv.writer(fh_col2)
-            for row in ((1,'a'),(2,'b'),(3,'c')):
+            for row in (('1','a'),('2','b'),('3','c')):
                 fh_col1_csv.writerow(row)
             fh_col1.flush()
             fh_col1.seek(0)
-            for row in ((1,'d'),(2,'e'),(3,'f')):
+            for row in (('1','d'),('2','e'),('3','f')):
                 fh_col2_csv.writerow(row)
             fh_col2.flush()
             fh_col2.seek(0)
@@ -1200,9 +1215,12 @@ class ModelDExpressionTestCase(unittest.TestCase):
     
     def setUp(self):
         self.tempdir = tempfile.mkdtemp()
-        sampleinfo_fh = tempfile.NamedTemporaryFile(dir=self.tempdir, suffix='.csv', delete=False)
+        sampleinfo_fh = tempfile.NamedTemporaryFile(dir=self.tempdir, 
+                                                    mode='w+',
+                                                    suffix='.csv', 
+                                                    delete=False)
         csv_w = csv.writer(sampleinfo_fh)
-        csv_w.writerow(['sample_id', 'group'])
+        csv_w.writerow([b'sample_id', b'group'])
         for i in range(6):
             csv_w.writerow([str(i), ('A','B')[i%2]])
         sampleinfo_fh.flush()
@@ -1210,7 +1228,10 @@ class ModelDExpressionTestCase(unittest.TestCase):
         with open(PHAGEFASTA) as fasta_fh:
             reference = next(railroadtracks.model.simulate.readfasta_iter(fasta_fh))
         random.seed(123)    
-        with tempfile.NamedTemporaryFile(dir=self.tempdir, suffix='.csv', delete=False) as fh_merged:
+        with tempfile.NamedTemporaryFile(dir=self.tempdir,
+                                         mode='w+',
+                                         suffix='.csv', 
+                                         delete=False) as fh_merged:
             csv_w = csv.writer(fh_merged)
             self.asset_merge = rnaseq.SavedCSV(fh_merged.name)
             self._r_exec = environment.R('R')
@@ -1238,14 +1259,14 @@ class ModelDExpressionTestCase(unittest.TestCase):
         deseq = rnaseq.DESeq(self._r_exec)
         self.assertEqual(set((rnaseq.ACTIVITY.DIFFEXP,)), set(deseq.activities))
         AssetsDE = railroadtracks.model.diffexp.AssetsDifferentialExpression
-        fh = tempfile.NamedTemporaryFile()
+        fh = tempfile.NamedTemporaryFile(mode='w+')
         source = AssetsDE.Source(self.asset_merge, 
                                  core.File(self._sampleinfo_fh.name))
         target = AssetsDE.Target(core.File(fh.name))
         assets = AssetsDE(source,
                           target)
         cmd, returncode = deseq.run(assets, parameters=('--dispersion-fittype=local', ))
-        self.assertEquals(0, returncode)
+        self.assertEqual(0, returncode)
 
     @unittest.skipIf(not (environment.Executable.ispresent('R') and \
                           environment.R('R').packageversion_or_none('DESeq2') is not None),
@@ -1254,14 +1275,14 @@ class ModelDExpressionTestCase(unittest.TestCase):
         deseq2 = rnaseq.DESeq2(self._r_exec)
         self.assertEqual(set((rnaseq.ACTIVITY.DIFFEXP,)), set(deseq2.activities))
         AssetsDE = railroadtracks.model.diffexp.AssetsDifferentialExpression
-        fh = tempfile.NamedTemporaryFile()
+        fh = tempfile.NamedTemporaryFile(mode='w+')
         source = AssetsDE.Source(self.asset_merge,
                                  core.File(self._sampleinfo_fh.name))
         target = AssetsDE.Target(core.File(fh.name))
         assets = AssetsDE(source,
                           target)
         cmd, returncode = deseq2.run(assets)
-        self.assertEquals(0, returncode)
+        self.assertEqual(0, returncode)
 
 
     @unittest.skipIf(not (environment.Executable.ispresent('R') and \
@@ -1271,14 +1292,14 @@ class ModelDExpressionTestCase(unittest.TestCase):
         edger = rnaseq.EdgeR(self._r_exec)
         self.assertEqual(set((rnaseq.ACTIVITY.DIFFEXP,)), set(edger.activities))
         AssetsDE = railroadtracks.model.diffexp.AssetsDifferentialExpression
-        fh = tempfile.NamedTemporaryFile()
+        fh = tempfile.NamedTemporaryFile(mode='w+')
         source = AssetsDE.Source(self.asset_merge,
                                  core.File(self._sampleinfo_fh.name))
         target = AssetsDE.Target(core.File(fh.name))
         assets = AssetsDE(source,
                           target)
         cmd, returncode = edger.run(assets)
-        self.assertEquals(0, returncode)
+        self.assertEqual(0, returncode)
 
 
     @unittest.skipIf(not (environment.Executable.ispresent('R') and \
@@ -1288,20 +1309,20 @@ class ModelDExpressionTestCase(unittest.TestCase):
         voom = rnaseq.LimmaVoom(self._r_exec)
         self.assertEqual(set((rnaseq.ACTIVITY.DIFFEXP,)), set(voom.activities))
         AssetsDE = railroadtracks.model.diffexp.AssetsDifferentialExpression
-        fh = tempfile.NamedTemporaryFile()
+        fh = tempfile.NamedTemporaryFile(mode='w+')
         source = AssetsDE.Source(self.asset_merge,
                                  core.File(self._sampleinfo_fh.name))
         target = AssetsDE.Target(core.File(fh.name))
         assets = AssetsDE(source,
                           target)
         cmd, returncode = voom.run(assets)
-        self.assertEquals(0, returncode)
+        self.assertEqual(0, returncode)
 
 
 class PersistanceTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.cache_file = tempfile.NamedTemporaryFile()
+        self.cache_file = tempfile.NamedTemporaryFile(mode='w+')
         class PythonTime(core.StepAbstract):
             """ Dummy step - print the local date/time using Python. """
             _name = 'time'
@@ -1317,7 +1338,7 @@ class PersistanceTestCase(unittest.TestCase):
             def version(self):
                 res = subprocess.check_output([self._execpath, '--version'],
                                               stderr=subprocess.STDOUT)
-                version = res[:res.find(os.linesep)]
+                version = res.split(linesep)[0]
                 return version
             def run(self, assets, parameters=('%D', )):
                 # assets not used
@@ -1474,7 +1495,7 @@ class PersistanceTestCase(unittest.TestCase):
             @property
             def version(self):
                 res = subprocess.check_output([self._execpath, '--version'])
-                version = res[:res.find(os.linesep)]
+                version = res.split(linesep)[0]
                 return version
             def run(self):
                 pass
@@ -1637,11 +1658,11 @@ class PersistanceTestCase(unittest.TestCase):
         cache = hortator.PersistentTaskList(self.cache_file.name, model, force_create=True)
         split = Split(None)
         parameters = tuple()
-        input_file = tempfile.NamedTemporaryFile()
-        input_file.write(b'123')
+        input_file = tempfile.NamedTemporaryFile(mode='w+')
+        input_file.write('123')
         input_file.flush()
-        head_file = tempfile.NamedTemporaryFile()
-        tail_file = tempfile.NamedTemporaryFile()
+        head_file = tempfile.NamedTemporaryFile(mode='w+')
+        tail_file = tempfile.NamedTemporaryFile(mode='w+')
         sources = split.Assets.Source(core.File(input_file.name))
         targets = split.Assets.Target(core.File(head_file.name),
                                       core.File(tail_file.name))
@@ -1652,25 +1673,25 @@ class PersistanceTestCase(unittest.TestCase):
         self.assertRaises(ValueError, cache.get_targetsofactivity, ActivitiesSplit.FOO)
         # get the targets of the activity (obviously there are not any yet)
         res = cache.get_targetsofactivity(ActivitiesSplit.HEADTAIL)
-        self.assertEquals(0, len(res))
+        self.assertEqual(0, len(res))
         # create a new task
         task_id = cache.id_stepconcrete(stepvariant_db_id.id,
                                         sources, targets, parameters)
         # there is only one such 
         res = cache.get_targetsofactivity(ActivitiesSplit.HEADTAIL)
-        self.assertEquals(2, len(res))
+        self.assertEqual(2, len(res))
         #
-        head_file = tempfile.NamedTemporaryFile()
-        tail_file = tempfile.NamedTemporaryFile()
+        head_file = tempfile.NamedTemporaryFile(mode='w+')
+        tail_file = tempfile.NamedTemporaryFile(mode='w+')
         targets_other = split.Assets.Target(core.File(head_file.name),
                                       core.File(tail_file.name))
         task_id_other = cache.id_stepconcrete(stepvariant_db_id.id,
                                               sources, targets_other, parameters=(1,))
         res = cache.get_targetsofactivity(ActivitiesSplit.HEADTAIL)
-        self.assertEquals(4, len(res))
+        self.assertEqual(4, len(res))
         # --
         cat = Cat(None)
-        concat = tempfile.NamedTemporaryFile()
+        concat = tempfile.NamedTemporaryFile(mode='w+')
         sources = cat.Assets.Source(core.FileSequence((targets.head, targets_other.head)))
         targets = cat.Assets.Target(core.File(concat.name))
         # ensure that step variant is tracked
@@ -1679,18 +1700,18 @@ class PersistanceTestCase(unittest.TestCase):
         task_id_cat = cache.id_stepconcrete(stepvariant_db_id.id,
                                             sources, targets, parameters)
         res = cache.get_targetsofactivity(ActivitiesSplit.MERGE)
-        self.assertEquals(1, len(res))
+        self.assertEqual(1, len(res))
                                         
     def test_get_parenttask_of_storedentity(self):
         model = core.Model(tuple()) # getting away with an empty model for this step
         cache = hortator.PersistentTaskList(self.cache_file.name, model, force_create=True)
         split = Split(None)
         parameters = tuple()
-        input_file = tempfile.NamedTemporaryFile()
-        input_file.write(b'123')
+        input_file = tempfile.NamedTemporaryFile(mode='w+')
+        input_file.write('123')
         input_file.flush()
-        head_file = tempfile.NamedTemporaryFile()
-        tail_file = tempfile.NamedTemporaryFile()
+        head_file = tempfile.NamedTemporaryFile(mode='w+')
+        tail_file = tempfile.NamedTemporaryFile(mode='w+')
         sources = split.Assets.Source(core.File(input_file.name))
         targets = split.Assets.Target(core.File(head_file.name),
                                       core.File(tail_file.name))
@@ -1706,25 +1727,25 @@ class PersistanceTestCase(unittest.TestCase):
             self.assertTrue(res is None)
         for sa in cache.get_targetassets(task_id):
             res = cache.get_parenttask_of_storedentity(sa)
-            self.assertEquals(task_id.id, res.id)
+            self.assertEqual(task_id.id, res.id)
         #
-        head_file_other = tempfile.NamedTemporaryFile()
-        tail_file_other = tempfile.NamedTemporaryFile()
+        head_file_other = tempfile.NamedTemporaryFile(mode='w+')
+        tail_file_other = tempfile.NamedTemporaryFile(mode='w+')
         targets_other = split.Assets.Target(core.File(head_file_other.name),
                                             core.File(tail_file_other.name))
         task_id_other = cache.id_stepconcrete(stepvariant_db_id.id,
                                               split.Assets.Source(targets.tail), targets_other, parameters=(1,))
         for sa in cache.get_srcassets(task_id_other):
             res = cache.get_parenttask_of_storedentity(sa)
-            self.assertEquals(task_id.id, res.id)
+            self.assertEqual(task_id.id, res.id)
         for sa in cache.get_targetassets(task_id_other):
             res = cache.get_parenttask_of_storedentity(sa)
-            self.assertEquals(task_id_other.id, res.id)
+            self.assertEqual(task_id_other.id, res.id)
 
         # --
         cat = Cat(None)
         sources_cat = cat.Assets.Source(core.FileSequence((targets.head, targets_other.head)))
-        concat = tempfile.NamedTemporaryFile()
+        concat = tempfile.NamedTemporaryFile(mode='w+')
         targets_cat = cat.Assets.Target(core.File(concat.name))
         # ensure that step variant is tracked
         stepvariant_db_id_cat = cache.id_step_variant(cat,
@@ -1735,20 +1756,20 @@ class PersistanceTestCase(unittest.TestCase):
             if hasattr(sa, 'iter_storedentities'):
                 for sa_sub, t in zip(sa.iter_storedentities(), (task_id, task_id_other)):
                     res = cache.get_parenttask_of_storedentity(sa_sub)
-                    self.assertEquals(t.id, res.id)                    
+                    self.assertEqual(t.id, res.id)                    
             else:
                 res = cache.get_parenttask_of_storedentity(sa)
-                self.assertEquals(task_id_cat.id, res.id)
+                self.assertEqual(task_id_cat.id, res.id)
 
-        head_file_other = tempfile.NamedTemporaryFile()
-        tail_file_other = tempfile.NamedTemporaryFile()
+        head_file_other = tempfile.NamedTemporaryFile(mode='w+')
+        tail_file_other = tempfile.NamedTemporaryFile(mode='w+')
         targets_other = split.Assets.Target(core.File(head_file_other.name),
                                             core.File(tail_file_other.name))
         task_id = cache.id_stepconcrete(stepvariant_db_id.id,
                                         split.Assets.Source(targets_cat.result), targets_other, tuple())
         for sa in cache.get_srcassets(task_id):
             res = cache.get_parenttask_of_storedentity(sa)
-            self.assertEquals(task_id_cat.id, res.id)
+            self.assertEqual(task_id_cat.id, res.id)
         
 
 
@@ -1781,58 +1802,58 @@ class PersistanceTestCase(unittest.TestCase):
 
         split = Split(None)
         parameters = tuple()
-        input_file = tempfile.NamedTemporaryFile()
-        input_file.write(b'123')
+        input_file = tempfile.NamedTemporaryFile(mode='w+')
+        input_file.write('123')
         input_file.flush()
-        head_file = tempfile.NamedTemporaryFile()
-        tail_file = tempfile.NamedTemporaryFile()
+        head_file = tempfile.NamedTemporaryFile(mode='w+')
+        tail_file = tempfile.NamedTemporaryFile(mode='w+')
         sources = split.Assets.Source(core.File(input_file.name))
         targets = split.Assets.Target(core.File(head_file.name),
                                       core.File(tail_file.name))
         stepvariant_db_id = cache.id_step_variant(split,
                                                   split.activities)
         res = cache.get_targetsoftype(core.File.__name__)
-        self.assertEquals(0, len(res))
+        self.assertEqual(0, len(res))
         task_id = cache.id_stepconcrete(stepvariant_db_id.id,
                                         sources, targets, parameters)
         res = cache.get_targetsoftype(core.File.__name__)
-        self.assertEquals(2, len(res))
+        self.assertEqual(2, len(res))
 
         splitcsv = SplitCSV(None)
         parameters = tuple()
-        input_file = tempfile.NamedTemporaryFile(suffix=".csv")
-        input_file.write(b'123')
+        input_file = tempfile.NamedTemporaryFile(suffix=".csv", mode='w+')
+        input_file.write('123')
         input_file.flush()
-        head_file = tempfile.NamedTemporaryFile(suffix=".csv")
-        tail_file = tempfile.NamedTemporaryFile(suffix=".csv")
+        head_file = tempfile.NamedTemporaryFile(suffix=".csv", mode='w+')
+        tail_file = tempfile.NamedTemporaryFile(suffix=".csv", mode='w+')
         sources = splitcsv.Assets.Source(railroadtracks.model.files.SavedCSV(input_file.name))
         targets = splitcsv.Assets.Target(railroadtracks.model.files.SavedCSV(head_file.name),
                                          railroadtracks.model.files.SavedCSV(tail_file.name))
         stepvariant_db_id = cache.id_step_variant(splitcsv,
                                                   splitcsv.activities)
         res = cache.get_targetsoftype(railroadtracks.model.files.SavedCSV.__name__)
-        self.assertEquals(0, len(res))
+        self.assertEqual(0, len(res))
         task_id = cache.id_stepconcrete(stepvariant_db_id.id,
                                         sources, targets, parameters)
         res = cache.get_targetsoftype(railroadtracks.model.files.SavedCSV.__name__)
-        self.assertEquals(2, len(res))
+        self.assertEqual(2, len(res))
 
-        head_file = tempfile.NamedTemporaryFile()
-        tail_file = tempfile.NamedTemporaryFile()
+        head_file = tempfile.NamedTemporaryFile(mode='w+')
+        tail_file = tempfile.NamedTemporaryFile(mode='w+')
         targets = split.Assets.Target(core.File(head_file.name),
                                       core.File(tail_file.name))
         task_id_other = cache.id_stepconcrete(stepvariant_db_id.id,
                                               sources, targets, parameters=(1,))
         res = cache.get_targetsoftype(core.File.__name__)
-        self.assertEquals(4, len(res))
+        self.assertEqual(4, len(res))
 
 class ModelCRCHeadTailTestCase(unittest.TestCase):
 
     def _test(self, data, crc):
-        fh = tempfile.NamedTemporaryFile()
+        fh = tempfile.NamedTemporaryFile(mode='w+')
         fh.write(data)
         fh.flush()
-        out_fh = tempfile.NamedTemporaryFile(suffix='.csv')
+        out_fh = tempfile.NamedTemporaryFile(mode='w+', suffix='.csv')
         assets = crc.Assets(crc.Assets.Source(core.File(fh.name)),
                             crc.Assets.Target(rnaseq.SavedCSV(out_fh.name)))
         cmd, returncode = crc.run(assets)
@@ -1862,7 +1883,7 @@ class StepTestCase(unittest.TestCase):
 
     def test_Step(self):
         #'id label classname entityname'
-        fh = tempfile.NamedTemporaryFile()
+        fh = tempfile.NamedTemporaryFile(mode='w+')
         fh.write('foobarbaz')
         fh.flush()
         out_fh = tempfile.NamedTemporaryFile(suffix='.csv')
@@ -2055,7 +2076,6 @@ class RecipeTestCase(unittest.TestCase):
         # -- initialization boiler plate code
         import tempfile
         from railroadtracks import hortator, rnaseq, easy
-        from environment import Executable
 
         wd = tempfile.mkdtemp()
         project = easy.Project(rnaseq, wd=wd)
@@ -2083,7 +2103,7 @@ class RecipeTestCase(unittest.TestCase):
                                                                              reference)
             samplereads.append((read1_fh, read2_fh))
 
-        sampleinfo_fh = tempfile.NamedTemporaryFile(suffix='.csv')
+        sampleinfo_fh = tempfile.NamedTemporaryFile(suffix='.csv', mode='w+')
         csv_w = csv.writer(sampleinfo_fh)
         csv_w.writerow(['sample_id', 'group'])
         for i in range(6):

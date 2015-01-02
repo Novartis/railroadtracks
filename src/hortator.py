@@ -66,7 +66,7 @@ class Step:
     to sources. For more information about a StepGraph, see
     the documentation for it.
     """
-    __slots__ = ['step', 'sources', 'targets']
+    __slots__ = ['step', 'sources', 'targets', 'parameters', 'model']
     def __init__(self, step, 
                  sources, targets, parameters,
                  model):

@@ -49,5 +49,5 @@ setup(name=packagename,
                                   'src/templates/*.html']},
       include_package_data=True,
       packages=[packagename, packagename + '.model'],
-      install_requires=['flufl.enum', 'networkx', 'jinja2', 'enum34'] #FIXME: enum34 not needed if Python >= 3.4
+      install_requires=['flufl.enum', 'networkx', 'jinja2', 'six', 'enum34'] #FIXME: enum34 not needed if Python >= 3.4
      )

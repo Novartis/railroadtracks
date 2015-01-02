@@ -41,14 +41,16 @@ DbID = namedtuple('DbID', 'id')
 class Asset(object):
     """ An asset is either used by a task (then it is a source asset) or is produced
     by a task (then it is a target asset). """
-    __slots__ = ('id', '_asset_id', 'entity', '_entity', 'project', '_project', 'parenttask')
+    __slots__ = ()#('id', '_asset_id', 'entity', '_entity', 'project', '_project', 'parenttask')
     def __init__(self, project, savedentity, asset_id):
         self._asset_id = asset_id
         self._entity = savedentity
         self._project = project
+
     @property
     def id(self):
         return self._asset_id
+
     @property
     def entity(self):
         """ Instance of :class:`SavedEntityAbstract` 

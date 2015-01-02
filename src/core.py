@@ -18,6 +18,12 @@ import abc
 from operator import attrgetter
 import sys
 
+from six import with_metaclass
+
+if sys.version_info[0] > 2:
+    # Python 3 !
+    unicode = str
+
 from flufl.enum import Enum
 
 
@@ -25,14 +31,13 @@ from flufl.enum import Enum
 _NOTIMPLEMENTED_ABSTRACT = "This is an interface, and should be implemented by child classses."
 
 
-class SavedEntityAbstract(object):
+class SavedEntityAbstract(with_metaclass(abc.ABCMeta, object)):
     """
     Represent a file, or group of files, whether already existing on the disk or not.
 
     Instances of the class are iterable in order to have a unified handling for single
     files and sequences of files.
     """
-    __metaclass__ = abc.ABCMeta
 
     _defined = False
     _extension = None
@@ -181,9 +186,9 @@ UnifiedExecInfo = collections.namedtuple('UnifiedExecInfo',
 
 
 # -- stepabstract-begin
-class StepAbstract(object):
+class StepAbstract(with_metaclass(abc.ABCMeta, object)):
     """ Abstract parent for steps. """
-    __metaclass__ = abc.ABCMeta
+
     # monicker under which the step will be known (must be unique within a step list)
     _name = abc.abstractproperty()
     # default name for executable associated with the class
@@ -296,9 +301,9 @@ class AssetMeta(type):
         return os.linesep.join(res)
 
 #FIXME: implement a deferred check (to allow unspecified asset elements to exist)
-class AssetSet(object):
+class AssetSet(with_metaclass(AssetMeta, object)):
     """ Ordered set of assets """
-    __metaclass__ = AssetMeta
+
     def __init__(self, *args):
         sources = getattr(self, AssetMetaReserved.SOURCES.value)
         assert len(args) == len(sources), 'The following parameter(s) must be specified, and in that order: %s' % \

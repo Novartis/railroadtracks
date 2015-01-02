@@ -31,26 +31,31 @@ from railroadtracks.model.files import (File,
                                         SavedGFF,
                                         FASTQPossiblyGzipCompressed,
                                         BEDFile)
-import sys, \
-    os, \
-    random, \
-    collections, \
-    csv, \
-    re, \
-    tempfile, \
-    subprocess, \
-    shutil
+import sys
+import os
+import random
+import collections
+import csv
+import re
+import tempfile
+import subprocess
+import shutil
+
+if sys.version_info[0] < 3:
+    linesep = os.linesep
+else:
+    linesep = bytes(os.linesep, 'ascii')
 
 PHAGEFASTA = os.path.join(os.path.dirname(railroadtracks.__file__), 'EF204940.fa')
 PHAGEGFF = os.path.join(os.path.dirname(railroadtracks.__file__), 'ef204940.gff')
 PHAGEGTF = os.path.join(os.path.dirname(railroadtracks.__file__), 'ef204940.gtf')
 
 # Conditional definition for Python 3:
-if sys.version_info[0] == 3:
-    maketrans = str.maketrans
+if sys.version_info[0] > 2:
+    maketrans = bytearray.maketrans
 else:
     from string import maketrans
-COMPLETEMENT_TABLE = maketrans('ATGC','TACG')
+COMPLEMENT_TABLE = maketrans(b'ATGC',b'TACG')
 
 Entry = collections.namedtuple('Entry', 'header sequence')
 def readfasta_iter(fh):
@@ -60,13 +65,13 @@ def readfasta_iter(fh):
     for row in fh:
         if row.startswith('>'):
             if header is not None:
-                yield Entry(header, ''.join(sequence))
+                yield Entry(header, bytearray(''.join(sequence), 'ascii'))
             header = row.rstrip()
             sequence = list()
         else:
             sequence.append(row.strip())
     if len(sequence) > 0:
-        yield Entry(header, ''.join(sequence))
+        yield Entry(header, bytearray(''.join(sequence), 'ascii'))
 
 GFFEntry = collections.namedtuple('GFFEntry', 'seqname source feature start end score strand fram attribute')
 GFFSTART_I = GFFEntry._fields.index('start')
@@ -103,30 +108,55 @@ def randomfastq(entry, n, length):
     dummyqual = b'~'*length
     for r_i in range(n):
         r_start = randomreadstart(entry, length)
+        if sys.version_info[0] < 3:
+            buf = buffer(entry.sequence, r_start, length)
+        else:
+            # Python 3
+            buf = memoryview(entry.sequence)[r_start:(r_start+length)]
         res = (READHEADER_TEMPLATE % {'init':'@', 'x': r_i, 'y': r_i,
                                       'lane':1, 'tile':2, 'pair':1},
-               buffer(entry.sequence, r_start, length),
+               buf,
                READHEADER_TEMPLATE % {'init':'+', 'x': r_i, 'y': r_i,
                                       'lane':1, 'tile':2, 'pair':1},
                dummyqual)
         yield res
 
+if sys.version_info[0] < 3:
+    def _readheader(init, r_i, lane, tile, pair):
+        return bytes(READHEADER_TEMPLATE % {'init':init, 
+                                            'x': r_i, 'y': r_i,
+                                            'lane':lane, 'tile':tile, 
+                                            'pair':pair})
+else:
+    def _readheader(init, r_i, lane, tile, pair):
+        return bytes(READHEADER_TEMPLATE % {'init':init, 
+                                            'x': r_i, 'y': r_i,
+                                            'lane':lane, 'tile':tile, 
+                                            'pair':pair}, 'ascii')
+
 def randomfastq_pe(entry, n, length, insert, lane=1, tile=2):
-    sequence_rc = entry.sequence[::-1].translate(COMPLETEMENT_TABLE)
-    dummyqual = b'~'*length    
+    sequence_rc = entry.sequence[::-1].translate(COMPLEMENT_TABLE)
+    dummyqual = b'~'*length
+
     for r_i in range(n):
         r_start = randomreadstart(entry, length+insert+length)
-        read1 = (READHEADER_TEMPLATE % {'init':'@', 'x': r_i, 'y': r_i,
-                                        'lane':lane, 'tile':tile, 'pair':1},
-                 buffer(entry.sequence, r_start, length),
-                 READHEADER_TEMPLATE % {'init':'+', 'x': r_i, 'y': r_i,
-                                        'lane':lane, 'tile':tile, 'pair':1},
+        if sys.version_info[0] < 3:
+            buf = buffer(entry.sequence, r_start, length)
+        else:
+            # Python 3
+            buf = memoryview(entry.sequence)[r_start:(r_start+length)]
+        read1 = (_readheader('@', r_i, lane, tile, 1),
+                 buf,
+                 _readheader('+', r_i, lane, tile, 1),
                  dummyqual)
-        read2 = (READHEADER_TEMPLATE % {'init':'@', 'x': r_i, 'y': r_i,
-                                        'lane':lane, 'tile':tile, 'pair':2},
-                 buffer(sequence_rc, r_start+length+insert, length),
-                 READHEADER_TEMPLATE % {'init':'+', 'x': r_i, 'y': r_i,
-                                        'lane':lane, 'tile':tile, 'pair':2},
+        if sys.version_info[0] < 3:
+            buf = buffer(entry.sequence, r_start, length)
+        else:
+            # Python 3
+            buf = memoryview(sequence_rc)[(r_start+length+insert):length]
+        read2 = (_readheader('@', r_i, lane, tile, 2),
+                 buf,
+                 _readheader('+', r_i, lane, tile, 2),
                  dummyqual)
         yield (read1, read2)
 
@@ -147,10 +177,10 @@ def randomPEreads(read1_fh, read2_fh,
     for read1, read2 in randomfastq_pe(fastaentry, n, l, insert):
         for row in read1:
             read1_fh.write(row)
-            read1_fh.write(os.linesep)
+            read1_fh.write(linesep)
         for row in read2:
             read2_fh.write(row)
-            read2_fh.write(os.linesep)
+            read2_fh.write(linesep)
     read1_fh.flush()
     read2_fh.flush()
     return (read1_fh, read2_fh)
@@ -408,9 +438,9 @@ class FluxsimulatorSequencing(core.StepAbstract):
             fh_out.write('READ_NUMBER\t%i\n' % options.read_number)
             fh_out.write('READ_LENGTH\t%i\n' % options.read_length)
             fh_out.write('ERR_FILE\t%s\n' % options.error_file)
-            fh_out.write(os.linesep.join((SEQ_FILE_TEMPLATE,
-                                          LIB_FILE_TEMPLATE,
-                                          SIZE_DISTRIBUTION_TEMPLATE)) % {'reads_fn': syntheticreads_prefix + '.fastq', 
+            fh_out.write(linesep.join((SEQ_FILE_TEMPLATE,
+                                       LIB_FILE_TEMPLATE,
+                                       SIZE_DISTRIBUTION_TEMPLATE)) % {'reads_fn': syntheticreads_prefix + '.fastq', 
                                                                           'lib_fn': assets.target.lib.name,
                                                                           'size_distribution': options.size_distribution})
             #fh_out.write(STATS_FILE_TEMPLATE % ({'stats_fn': syntheticreads_prefix + '.txt'}))
