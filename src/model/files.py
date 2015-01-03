@@ -26,8 +26,14 @@ from railroadtracks import core, environment
 from railroadtracks.core import SavedEntityAbstract, File, FileSequence
 
 import sys
-if sys.version_info[0] > 2:
+if sys.version_info[0] < 3:
+    def astring(name):
+        return isinstance(name, str) or isinstance(name, unicode)
+else:
     from functools import reduce
+    def astring(name):
+        return isinstance(name, str) or isinstance(name, bytes)
+
 
 class ACTIVITY(core.Enum):
     """ Activities that can be performed by the different steps modeled.
@@ -111,7 +117,7 @@ class FilePattern(SavedEntityAbstract):
     def __init__(self, name):
         if name is not None:
             self._defined = True
-            if not (isinstance(name, str) or isinstance(name, unicode)):
+            if not astring(name):
                 if len(name) == 1:
                     name = next(iter(name))
                 else:
@@ -368,13 +374,14 @@ def samtools_getversion(execpath):
 
     cmd = [execpath,]
     logging.debug(cmd)
-    proc = subprocess.Popen(cmd,
-                            stderr=subprocess.PIPE)
+    m = None
+    with core.Popen(cmd,
+                    stderr=subprocess.PIPE) as proc:
 
-    for row in proc.stderr:
-        m = re.match(b'^Version: ([^ \n]+).*$', row)
-        if m is not None:
-            break
+        for row in proc.stderr:
+            m = re.match(b'^Version: ([^ \n]+).*$', row)
+            if m is not None:
+                break
     if m is None:
         raise RuntimeError('Could not find the version number.')
     version = m.groups()[0]

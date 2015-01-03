@@ -335,20 +335,22 @@ class HTSeqCount(QuantifierAbstract):
             # HTSeq-count does not use column names in its output, unfortunately,
             # so we correct that
             csv_w.writerow(['ID','count'])
-            p_bam2sam = subprocess.Popen(cmd_bam2sam, stdout=subprocess.PIPE, stderr=fnull)
-            p_htseq = subprocess.Popen(cmd_count, 
-                                       stdin = p_bam2sam.stdout,
-                                       stdout = subprocess.PIPE,
-                                       stderr = fnull)
-            csv_r = csv.reader(p_htseq.stdout, delimiter='\t')
-            for row in csv_r:
-                csv_w.writerow(row)
-                p_htseq.stdout.flush()
-            p_htseq.communicate()[0]
-        if p_htseq.returncode != 0:
-            if sortedbam_fh is not None:
-                os.unlink(sortedbam_fh.name)
-            raise subprocess.CalledProcessError(p_htseq.returncode, cmd, None)
+            with core.Popen(cmd_bam2sam, 
+                            stdout=subprocess.PIPE,
+                            stderr=fnull) as p_bam2sam:
+                with core.Popen(cmd_count, 
+                                stdin = p_bam2sam.stdout,
+                                stdout = subprocess.PIPE,
+                                stderr = fnull) as p_htseq:
+                    csv_r = csv.reader(p_htseq.stdout, delimiter='\t')
+                    for row in csv_r:
+                        csv_w.writerow(row)
+                        p_htseq.stdout.flush()
+                    p_htseq.communicate()[0]
+                if p_htseq.returncode != 0:
+                    if sortedbam_fh is not None:
+                        os.unlink(sortedbam_fh.name)
+                    raise subprocess.CalledProcessError(p_htseq.returncode, cmd, None)
         if sortedbam_fh is not None:
             os.unlink(sortedbam_fh.name)
         return (cmd, p_htseq.returncode)

@@ -16,13 +16,14 @@
 Information about the environment this is running on 
 """
 
-
 import sys, os, subprocess
 import tempfile, json
 import logging
 import re
+from railroadtracks import core
 
 logger = logging.getLogger(__name__)
+
 
 class MissingSoftware(ValueError):
     pass
@@ -75,9 +76,10 @@ class R(Executable):
 
     def getversion(self):
         if self.__version is None:
-            proc = subprocess.Popen((self.path, '--version'), stdout=subprocess.PIPE)
-            version = proc.stdout.readline()
-            self.__version = re.sub(b'R version (.+)', b'\\1', version)
+            with core.Popen((self.path, '--version'), \
+                            stdout=subprocess.PIPE) as proc:
+                version = proc.stdout.readline()
+                self.__version = re.sub(b'R version (.+)', b'\\1', version)
         logger.info('R version is %s' % self.__version)
         return self.__version    
     version = property(getversion, None, None, 'R version')
@@ -91,20 +93,21 @@ class R(Executable):
         :param name: name of the package
 
         """
-        code = 'res <- suppressMessages(suppressWarnings(require("%s", quietly=TRUE))); cat(res)'
+        code = """res <- suppressMessages(suppressWarnings(require("%s", quietly=TRUE))); cat(res)"""
         cmd = (self.path, '--slave', '--no-restore', '-e', code % name)
 
         rsays = subprocess.check_output(cmd).rstrip()
-        if rsays == 'FALSE':
+        if rsays == b'FALSE':
             raise MissingSoftware("The R package '%s' is not installed" % name)
 
         code = 'res <- suppressMessages(packageVersion("%s")); cat(as.character(res))'
         cmd = (self.path, '--slave', '-e', code % name)
-        with open(os.devnull, "w") as fnull:
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                    stderr=fnull)    
-        version = proc.stdout.readline().rstrip()
-        tmp = proc.stdout.read()
+        with open(os.devnull, "w") as fnull,\
+             core.Popen(cmd, stdout=subprocess.PIPE,
+                        stderr=fnull) as proc:
+            version = proc.stdout.readline().rstrip()
+            tmp = proc.stdout.read()
+
         logger.info('R package "%s" version is %s' % (name, version))
         return version
 
@@ -186,14 +189,14 @@ class R(Executable):
         Returns the return code for the child process.
         """
         cmd = (self.path, '--slave',)
-        with open(os.devnull, "w") as fnull:
-            proc = subprocess.Popen(cmd, stdin=stdin, 
-                                    stdout=stdout,
-                                    stderr=stderr)
-        stdout, stderr = proc.communicate(input=code.encode('ascii'))
-        if proc.returncode != 0:
-            logger.warning(stderr)
-        return proc.returncode
+        with open(os.devnull, "w") as fnull, \
+             core.Popen(cmd, stdin=stdin,
+                        stdout=stdout,
+                        stderr=stderr) as proc:
+            stdout, stderr = proc.communicate(input=code.encode('ascii'))
+            if proc.returncode != 0:
+                logger.warning(stderr)
+            return proc.returncode
         
 
     def __repr__(self):

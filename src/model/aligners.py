@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 from abc import ABCMeta, abstractproperty
 import os
 import logging
@@ -32,6 +33,7 @@ from railroadtracks.model.files import (FilePattern,
                                         BAMFile,
                                         samtools_getversion,
                                         SamtoolsSamToBam)
+
 
 class ACTIVITY(core.Enum):
     """ Activities that can be performed by the different steps modeled.
@@ -468,13 +470,15 @@ class Bowtie2(AlignerAbstract):
         cmd = cmd_align + ['|', ] + list(cmd_sam2bam) + ['>',] + [aligned_fn, ] 
         logger.debug(subprocess.list2cmdline(cmd))
         with open(os.devnull, "w") as fnull, \
-             open(aligned_fn, "w") as fh_out:
-            p_align = subprocess.Popen(cmd_align, stdout=subprocess.PIPE, stderr=fnull)
+             open(aligned_fn, "w") as fh_out, \
+             core.Popen(cmd_align, stdout=subprocess.PIPE, stderr=fnull) as p_align:
             # we are done yet: the output should be BAM, not SAM
-            p_sam2bam = subprocess.Popen(cmd_sam2bam, stdin=p_align.stdout, stdout=fh_out, stderr=fnull)
-            p_align.stdout.close()
-            p_sam2bam.communicate()[0]
-            returncode = p_sam2bam.returncode
+            with core.Popen(cmd_sam2bam, 
+                            stdin=p_align.stdout, 
+                            stdout=fh_out, 
+                            stderr=fnull) as p_sam2bam:
+                p_sam2bam.communicate()[0]
+                returncode = p_sam2bam.returncode
 
         # now merge aligned and unaligned reads
         #cmd_mergebam = (samtools, 'merge', assets.target.alignment.name, aligned_fn, unaligned_fn)
@@ -594,13 +598,16 @@ class Bowtie(AlignerAbstract):
         cmd = cmd_align + ['|', ] + list(cmd_sam2bam) + ['>',] + [aligned_fn, ] 
         logger.debug(subprocess.list2cmdline(cmd))
         with open(os.devnull, "w") as fnull, \
-             open(aligned_fn, "w") as fh_out:
-            p_align = subprocess.Popen(cmd_align, stdout=subprocess.PIPE, stderr=fnull)
+             open(aligned_fn, "w") as fh_out, \
+             core.Popen(cmd_align, stdout=subprocess.PIPE, stderr=fnull) as p_align:
             # we are done yet: the output should be BAM, not SAM
-            p_sam2bam = subprocess.Popen(cmd_sam2bam, stdin=p_align.stdout, stdout=fh_out, stderr=fnull)
-            p_align.stdout.close()
-            p_sam2bam.communicate()[0]
-            returncode = p_sam2bam.returncode
+            with core.Popen(cmd_sam2bam,
+                            stdin=p_align.stdout,
+                            stdout=fh_out,
+                            stderr=fnull) as p_sam2bam:
+                p_align.stdout.close()
+                p_sam2bam.communicate()[0]
+                returncode = p_sam2bam.returncode
 
         # # now merge aligned and unaligned reads
         # cmd_mergebam = (samtools, 'merge', assets.target.alignment.name, aligned_fn, unaligned_fn)
@@ -682,13 +689,15 @@ class BWA(AlignerAbstract):
         cmd = cmd_align + ['|', ] + list(cmd_sam2bam) + ['>',] + [assets.target.alignment.name, ] 
         logger.debug(subprocess.list2cmdline(cmd))
         with open(os.devnull, "w") as fnull, \
-             open(assets.target.alignment.name, "w") as fh_out:
-            p_align = subprocess.Popen(cmd_align, stdout=subprocess.PIPE, stderr=fnull)
+             open(assets.target.alignment.name, "w") as fh_out, \
+             core.Popen(cmd_align, stdout=subprocess.PIPE, stderr=fnull) as p_align:
             # we are done yet: the output should be BAM, not SAM
-            p_sam2bam = subprocess.Popen(cmd_sam2bam, stdin=p_align.stdout, stdout=fh_out, stderr=fnull)
-            p_align.stdout.close()
-            p_sam2bam.communicate()[0]
-            returncode = p_sam2bam.returncode
+            with core.Popen(cmd_sam2bam,
+                            stdin=p_align.stdout,
+                            stdout=fh_out,
+                            stderr=fnull) as p_sam2bam:
+                p_sam2bam.communicate()[0]
+                returncode = p_sam2bam.returncode
         return (cmd, returncode)
 
         cmd.append(assets.target.alignment.name)
@@ -848,9 +857,9 @@ class StarAlign(AlignerAbstract):
 
             # with open(os.devnull, "w") as fnull, \
             #      open(aligned_fn, "w") as fh_out:
-            #     p_align = subprocess.Popen(cmd_align, stdout=subprocess.PIPE, stderr=fnull)
+            #     p_align = core.Popen(cmd_align, stdout=subprocess.PIPE, stderr=fnull)
             #     # we are done yet: the output should be BAM, not SAM
-            #     p_sam2bam = subprocess.Popen(cmd_sam2bam, stdin=p_align.stdout, stdout=fh_out, stderr=fnull)
+            #     p_sam2bam = core.Popen(cmd_sam2bam, stdin=p_align.stdout, stdout=fh_out, stderr=fnull)
             #     p_align.stdout.close()
             #     p_sam2bam.communicate()[0]
             #     returncode = p_sam2bam.returncode
@@ -895,9 +904,9 @@ class GsnapIndex(IndexerAbstract):
             with open(os.devnull, "w") as fnull:
                 try:
                     logger.debug(subprocess.list2cmdline(cmd))
-                    proc = subprocess.Popen(cmd,
-                                            stdout=subprocess.PIPE,
-                                            stderr=fnull)
+                    proc = core.Popen(cmd,
+                                      stdout=subprocess.PIPE,
+                                      stderr=fnull)
                 except OSError as ose:
                     raise UnifexError("""Command: %s
                     %s""" % (' '.join(cmd), ose))
@@ -962,9 +971,9 @@ class GsnapAlign(AlignerAbstract):
                 cmd = [self._execpath]
                 try:
                     logger.debug(subprocess.list2cmdline(cmd))
-                    proc = subprocess.Popen(cmd,
-                                            stdout=fnull,
-                                            stderr=subprocess.PIPE)
+                    proc = core.Popen(cmd,
+                                      stdout=fnull,
+                                      stderr=subprocess.PIPE)
                 except OSError as ose:
                     raise UnifexError("""Command: %s
                     %s""" % (' '.join(cmd), ose))
@@ -1019,13 +1028,16 @@ class GsnapAlign(AlignerAbstract):
         cmd = cmd_align + ['|', ] + list(cmd_sam2bam) + ['>',] + [assets.target.alignment.name, ] 
         logger.debug(subprocess.list2cmdline(cmd))
         with open(os.devnull, "w") as fnull, \
-             open(assets.target.alignment.name, "w") as fh_out:
-            p_align = subprocess.Popen(cmd_align, stdout=subprocess.PIPE, stderr=fnull)
+             open(assets.target.alignment.name, "w") as fh_out, \
+             core.Popen(cmd_align, stdout=subprocess.PIPE, stderr=fnull) as p_align:
             # we are done yet: the output should be BAM, not SAM
-            p_sam2bam = subprocess.Popen(cmd_sam2bam, stdin=p_align.stdout, stdout=fh_out, stderr=fnull)
-            p_align.stdout.close()
-            p_sam2bam.communicate()[0]
-            returncode = p_sam2bam.returncode
+            with core.Popen(cmd_sam2bam,
+                            stdin=p_align.stdout,
+                            stdout=fh_out,
+                            stderr=fnull) as p_sam2bam:
+                p_align.stdout.close()
+                p_sam2bam.communicate()[0]
+                returncode = p_sam2bam.returncode
         return (cmd, returncode)
 
 class TopHat(core.StepAbstract):

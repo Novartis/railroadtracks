@@ -66,7 +66,6 @@ class EnvironmentTestCase(unittest.TestCase):
     def test_R(self):
         r_exec = environment.R('R')
         r_version = r_exec.version
-
         # missing package
         self.assertRaises(ValueError, r_exec.packageversion, 'foobarbaz')
 
@@ -1220,7 +1219,7 @@ class ModelDExpressionTestCase(unittest.TestCase):
                                                     suffix='.csv', 
                                                     delete=False)
         csv_w = csv.writer(sampleinfo_fh)
-        csv_w.writerow([b'sample_id', b'group'])
+        csv_w.writerow(['sample_id', 'group'])
         for i in range(6):
             csv_w.writerow([str(i), ('A','B')[i%2]])
         sampleinfo_fh.flush()

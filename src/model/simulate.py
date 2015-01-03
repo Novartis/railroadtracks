@@ -220,12 +220,12 @@ def _split_mergedpairs(merged_fn, read1_fn, read2_fn):
     env['read2'] = subprocess.list2cmdline((read2_fn,))
     cmd_str = 'paste - - - - - - - - < $mergedreads | ' + \
               'tee >(cut -f 1-4 | tr "\\t" "\\n" %(pipe_zip)s > $read1) | cut -f 5-8 | tr "\\t" "\\n" %(pipe_zip)s > $read2' % locals()
-    proc = subprocess.Popen(('/bin/bash', '-c', 
-                             cmd_str),
-                            env=env)
-    proc.communicate()
-    if proc.returncode != 0:
-        raise RuntimeError()
+    with core.Popen(('/bin/bash', '-c', 
+                     cmd_str),
+                    env=env) as proc:
+        proc.communicate()
+        if proc.returncode != 0:
+            raise RuntimeError()
 
 
 FLUXSIMULATOR_TEMPLATE = """

@@ -17,12 +17,20 @@ import os
 import abc
 from operator import attrgetter
 import sys
+import subprocess
 
 from six import with_metaclass
 
-if sys.version_info[0] > 2:
+if sys.version_info[0] < 3:
+    class Popen(subprocess.Popen):
+        def __enter__(self):
+            return self
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            self.wait()
+else:
     # Python 3 !
     unicode = str
+    Popen = subprocess.Popen
 
 from flufl.enum import Enum
 
