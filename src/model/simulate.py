@@ -150,10 +150,10 @@ def randomfastq_pe(entry, n, length, insert, lane=1, tile=2):
                  _readheader('+', r_i, lane, tile, 1),
                  dummyqual)
         if sys.version_info[0] < 3:
-            buf = buffer(entry.sequence, r_start, length)
+            buf = buffer(sequence_rc, 0, length)
         else:
             # Python 3
-            buf = memoryview(sequence_rc)[(r_start+length+insert):length]
+            buf = sequence_rc[:length]
         read2 = (_readheader('@', r_i, lane, tile, 2),
                  buf,
                  _readheader('+', r_i, lane, tile, 2),

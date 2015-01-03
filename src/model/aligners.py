@@ -668,7 +668,6 @@ class BWA(AlignerAbstract):
         # different strings for the command line
         if source.read1 is None or not isinstance(source.read1, core.SavedEntityAbstract):
             raise ValueError("Incorrect value %s for read1" % source.read1)
-
         if source.read2 is None:
             # single reads
             cmd_sub = ('mem', (source.indexfilepattern.name, source.read1.name))
