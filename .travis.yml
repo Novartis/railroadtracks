@@ -66,12 +66,15 @@ install:
   - ./configure --prefix=`pwd`/build
   - make
   - make install
-  - export PATH=`pwd`/build:${PATH} 
-  # TopHat2
+  - export PATH=`pwd`/build:${PATH}
+  - cd ../
+  # TopHat2 (requires Python <= 2.7)
   - tophat2_deps='2.0.13'
   - wget http://ccb.jhu.edu/software/tophat/downloads/tophat-${tophat2_deps}.Linux_x86_64.tar.gz
   - tar -xzf tophat-${tophat2_deps}.Linux_x86_64.tar.gz
-  - export PATH=`pwd`/tophat-${tophat2_deps}.Linux_x86_64:${PATH}
+  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
+        export PATH=`pwd`/tophat-${tophat2_deps}.Linux_x86_64:${PATH}
+    fi
   # STAR
   - star_deps='2.4.0h1'
   #- wget https://github.com/alexdobin/STAR/archive/STAR_${star_deps}.tar.gz
