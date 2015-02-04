@@ -57,6 +57,16 @@ install:
   - make
   - export PATH=`pwd`:${PATH}
   - cd ../
+  # GMAP/GSNAP
+  - gsnap_deps='2014-12-18'
+  - wget http://research-pub.gene.com/gmap/src/gmap-gsnap-${gsnap_deps}.tar.gz
+  - tar -xzf gmap-gsnap-${gsnap_deps}.tar.gz
+  - cd gmap-${gsnap_deps}
+  - mkdir build
+  - ./configure --prefix=`pwd`/build
+  - make
+  - make install
+  - export PATH=`pwd`/build:${PATH} 
   # TopHat2
   - tophat2_deps='2.0.13'
   - wget http://ccb.jhu.edu/software/tophat/downloads/tophat-${tophat2_deps}.Linux_x86_64.tar.gz
