@@ -73,7 +73,7 @@ install:
   - wget http://ccb.jhu.edu/software/tophat/downloads/tophat-${tophat2_deps}.Linux_x86_64.tar.gz
   - tar -xzf tophat-${tophat2_deps}.Linux_x86_64.tar.gz
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
-        export PATH=`pwd`/tophat-${tophat2_deps}.Linux_x86_64:${PATH}
+        export PATH=`pwd`/tophat-${tophat2_deps}.Linux_x86_64:${PATH};
     fi
   # STAR
   - star_deps='2.4.0h1'
