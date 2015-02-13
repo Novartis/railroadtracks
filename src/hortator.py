@@ -1060,7 +1060,20 @@ class PersistentTaskList(object):
             ?,
             ?);
             """
-            cursor.execute(sql, (cls.__name__, name))
+            try:
+                cursor.execute(sql, (cls.__name__, name))
+            except sqlite3.IntegrityError as ie:
+                # print an informative message before propagating the exception
+                sql = """
+                SELECT classname
+                FROM stored_entity
+                WHERE entityname=?
+                """
+                res = cursor.execute(sql, (name,))
+                res = cursor.fetchone()
+                msg = 'ERROR: The descriptor "%s" for the type "%s" is already in use with type "%s"' % (name, cls.__name__, res[0])
+                print(msg)
+                raise(ie)
             db_id = cursor.lastrowid
             self.connection.commit()
             res = DbID(db_id, True)
