@@ -2210,15 +2210,17 @@ class RecipeTestCase(unittest.TestCase):
             assets = Assets(Assets.Source(rnaseq.SavedFASTA(reference_fn)),
                             Assets.Target.createundefined())
             task_index = project.add_task(bowtie2index, assets)
-            # check that all tasks are done
-            for task in torun:
-                self.assertEqual(hortator._TASK_DONE, task.status)                
             torun.append(task_index)
             if iteration < 1:
                 nextiteration = True
                 runtasks(torun)
                 self.assertEqual(1, project.todo._cache.nconcrete_steps)
                 continue
+            else:
+                # check that all tasks are done
+                for task in torun:
+                    self.assertEqual(hortator._TASK_DONE, task.status[0][1])
+
             # process all samples
             sample_counts = list()
             for sample_i, (read1_fh, read2_fh) in enumerate(samplereads):
@@ -2229,15 +2231,16 @@ class RecipeTestCase(unittest.TestCase):
                                               rnaseq.FASTQPossiblyGzipCompressed(read2_fh.name)),
                                 Assets.Target.createundefined())
                 task_align = project.add_task(bowtie2align, assets)
-                # check that all tasks are done
-                for task in torun:
-                    self.assertEqual(hortator._TASK_DONE, task.status)
                 torun.append(task_align)
                 if iteration < 2:
                     nextiteration = True
                     runtasks(torun)
                     self.assertEqual(1+(sample_i+1), project.todo._cache.nconcrete_steps)
                     continue
+                else:
+                    # check that all tasks are done
+                    for task in torun:
+                        self.assertEqual(hortator._TASK_DONE, task.status[0][1])  
 
                 # quantify
                 # (non-default parameters to fit our demo GFF)
@@ -2251,7 +2254,8 @@ class RecipeTestCase(unittest.TestCase):
                                                  parameters=params)
                 # check that all tasks are done
                 for task in torun:
-                    self.assertEqual(hortator._TASK_DONE, task.status)
+                    self.assertEqual(hortator._TASK_DONE, task.status[0][1])
+                    
                 torun.append(task_quantify)
                 if iteration < 3:
                     nextiteration = True
@@ -2259,6 +2263,11 @@ class RecipeTestCase(unittest.TestCase):
                     self.assertEqual(1+len(samplereads)+(sample_i+1), 
                                      project.todo._cache.nconcrete_steps)
                     continue
+                else:
+                    # check that all tasks are done
+                    for task in torun:
+                        self.assertEqual(hortator._TASK_DONE, task.status[0][1])
+
 
                 # keep a pointer to the counts, as we will use it in the merge step
                 sample_counts.append(task_quantify.call.assets)
@@ -2270,13 +2279,9 @@ class RecipeTestCase(unittest.TestCase):
             counts = tuple(x.target.counts for x in sample_counts)
             assets = Assets(Assets.Source(rnaseq.SavedCSVSequence(counts)),
                             merge.Assets.Target.createundefined())
-
             task_merge = project.add_task(merge,
                                           assets,
                                           parameters=("0", "1"))
-            # check that all tasks are done
-            for task in torun:
-                self.assertEqual(hortator._TASK_DONE, task.status)
             torun.append(task_merge)
             if iteration < 4:
                 nextiteration = True
@@ -2284,6 +2289,11 @@ class RecipeTestCase(unittest.TestCase):
                 self.assertEqual(1+2*len(samplereads)+1, 
                                  project.todo._cache.nconcrete_steps)
                 continue
+            else:
+                # check that all tasks are done
+                for task in torun:
+                    self.assertEqual(hortator._TASK_DONE, task.status[0][1])
+
 
             # differential expression with edgeR
             Assets = edger.Assets
@@ -2292,10 +2302,6 @@ class RecipeTestCase(unittest.TestCase):
                             Assets.Target.createundefined())
             task_de = project.add_task(edger,
                                        assets)
-            # check that all tasks are done
-            for task in torun:
-                self.assertEqual(hortator._TASK_DONE, task.status)
-
             if iteration < 5:
                 nextiteration = True
                 runtasks(torun)
@@ -2315,6 +2321,7 @@ class RecipeTestCase(unittest.TestCase):
                 # run only if not done
                 if task.info[1] != hortator._TASK_DONE:
                     task.execute()
+                    task.status = hortator._TASK_DONE
         self._recipesimpleincremental(runtasks)
 
     @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
