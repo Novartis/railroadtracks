@@ -2182,7 +2182,7 @@ class RecipeTestCase(unittest.TestCase):
         self.assertEqual(1, project.todo._cache.nconcrete_steps)
 
 
-    def _recipesimpleincremental(self, runtasks):
+    def _recipesimpleincremental(self, runtasks, dorun=True):
         project = self.project
         env = self.env
         nsamples = self.nsamples
@@ -2216,7 +2216,7 @@ class RecipeTestCase(unittest.TestCase):
                 runtasks(torun)
                 self.assertEqual(1, project.todo._cache.nconcrete_steps)
                 continue
-            else:
+            elif dorun:
                 # check that all tasks are done
                 for task in torun:
                     self.assertEqual(hortator._TASK_DONE, task.status[0][1])
@@ -2237,7 +2237,7 @@ class RecipeTestCase(unittest.TestCase):
                     runtasks(torun)
                     self.assertEqual(1+(sample_i+1), project.todo._cache.nconcrete_steps)
                     continue
-                else:
+                elif dorun:
                     # check that all tasks are done
                     for task in torun:
                         self.assertEqual(hortator._TASK_DONE, task.status[0][1])  
@@ -2263,7 +2263,7 @@ class RecipeTestCase(unittest.TestCase):
                     self.assertEqual(1+len(samplereads)+(sample_i+1), 
                                      project.todo._cache.nconcrete_steps)
                     continue
-                else:
+                elif dorun:
                     # check that all tasks are done
                     for task in torun:
                         self.assertEqual(hortator._TASK_DONE, task.status[0][1])
@@ -2289,7 +2289,7 @@ class RecipeTestCase(unittest.TestCase):
                 self.assertEqual(1+2*len(samplereads)+1, 
                                  project.todo._cache.nconcrete_steps)
                 continue
-            else:
+            elif dorun:
                 # check that all tasks are done
                 for task in torun:
                     self.assertEqual(hortator._TASK_DONE, task.status[0][1])
@@ -2333,7 +2333,7 @@ class RecipeTestCase(unittest.TestCase):
         def runtasks(torun):
             # do nothing
             pass
-        self._recipesimpleincremental(runtasks)
+        self._recipesimpleincremental(runtasks, dorun=False)
 
 
     @unittest.skipIf(not (environment.Executable.ispresent('bowtie2-build') and \
