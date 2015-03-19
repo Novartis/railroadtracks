@@ -2210,6 +2210,9 @@ class RecipeTestCase(unittest.TestCase):
             assets = Assets(Assets.Source(rnaseq.SavedFASTA(reference_fn)),
                             Assets.Target.createundefined())
             task_index = project.add_task(bowtie2index, assets)
+            # check that all tasks are done
+            for task in torun:
+                self.assertEqual(hortator._TASK_DONE, task.status)                
             torun.append(task_index)
             if iteration < 1:
                 nextiteration = True
@@ -2226,6 +2229,9 @@ class RecipeTestCase(unittest.TestCase):
                                               rnaseq.FASTQPossiblyGzipCompressed(read2_fh.name)),
                                 Assets.Target.createundefined())
                 task_align = project.add_task(bowtie2align, assets)
+                # check that all tasks are done
+                for task in torun:
+                    self.assertEqual(hortator._TASK_DONE, task.status)
                 torun.append(task_align)
                 if iteration < 2:
                     nextiteration = True
@@ -2243,6 +2249,9 @@ class RecipeTestCase(unittest.TestCase):
                 task_quantify = project.add_task(htseqcount,
                                                  assets,
                                                  parameters=params)
+                # check that all tasks are done
+                for task in torun:
+                    self.assertEqual(hortator._TASK_DONE, task.status)
                 torun.append(task_quantify)
                 if iteration < 3:
                     nextiteration = True
@@ -2265,6 +2274,9 @@ class RecipeTestCase(unittest.TestCase):
             task_merge = project.add_task(merge,
                                           assets,
                                           parameters=("0", "1"))
+            # check that all tasks are done
+            for task in torun:
+                self.assertEqual(hortator._TASK_DONE, task.status)
             torun.append(task_merge)
             if iteration < 4:
                 nextiteration = True
@@ -2280,6 +2292,10 @@ class RecipeTestCase(unittest.TestCase):
                             Assets.Target.createundefined())
             task_de = project.add_task(edger,
                                        assets)
+            # check that all tasks are done
+            for task in torun:
+                self.assertEqual(hortator._TASK_DONE, task.status)
+
             if iteration < 5:
                 nextiteration = True
                 runtasks(torun)
