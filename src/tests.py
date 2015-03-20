@@ -2252,10 +2252,6 @@ class RecipeTestCase(unittest.TestCase):
                 task_quantify = project.add_task(htseqcount,
                                                  assets,
                                                  parameters=params)
-                # check that all tasks are done
-                for task in torun:
-                    self.assertEqual(hortator._TASK_DONE, task.status[0][1])
-                    
                 torun.append(task_quantify)
                 if iteration < 3:
                     nextiteration = True
