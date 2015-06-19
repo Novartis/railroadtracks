@@ -4,9 +4,9 @@ FROM python:2.7
 RUN apt-get update
 RUN apt-get dist-upgrade -y
 # add apt-add-repository
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
-  python-software-properties \
-  software-properties-common
+#RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
+#  python-software-properties \
+#  software-properties-common
 
 # Add repository for R
 RUN DEBIAN_FRONTEND=noninteractive echo deb http://cran.rstudio.com/bin/linux/debian jessie-cran3/ > /etc/apt/sources.list.d/rstudio.list
@@ -84,14 +84,15 @@ RUN DEBIAN_FRONTEND=noninteractive wget "http://research-pub.gene.com/gmap/src/g
 # (deprecated - not included)
 
 # Salmon (requires cmake, libtbb-dev)
-RUN DEBIAN_FRONTEND=noninteractive wget https://github.com/COMBINE-lab/salmon/archive/6e30b92843587f75d3d4a01b0a3bcfbde4237c20.zip && unzip 6e30b92843587f75d3d4a01b0a3bcfbde4237c20.zip && cd salmon-6e30b92843587f75d3d4a01b0a3bcfbde4237c20 && mkdir -p build && cmake -DCMAKE_C_COMPILER=`which gcc` -DCMAKE_CXX_COMPILER=`which g++` && make && make install && cd ..
+RUN DEBIAN_FRONTEND=noninteractive wget https://github.com/COMBINE-lab/salmon/archive/6e30b92843587f75d3d4a01b0a3bcfbde4237c20.zip && unzip 6e30b92843587f75d3d4a01b0a3bcfbde4237c20.zip && cd salmon-6e30b92843587f75d3d4a01b0a3bcfbde4237c20 && mkdir -p build && cmake -DCMAKE_C_COMPILER=`which gcc` -DCMAKE_CXX_COMPILER=`which g++` -DCMAKE_INSTALL_PREFIX:PATH=/usr/local && make && make install && cd ..
 
 # Samtools
 RUN DEBIAN_FRONTEND=noninteractive wget http://iweb.dl.sourceforge.net/project/samtools/samtools/0.1.19/samtools-0.1.19.tar.bz2 && tar -xjf samtools-0.1.19.tar.bz2 && cd samtools-0.1.19 && make && make razip && ln samtools /usr/local/bin/ && ln razip /usr/local/bin && ln libbam.a /usr/local/lib/ && mkdir /usr/local/include/bam && ln *.h /usr/local/include/bam && cd ..
 
 # STAR (requires vim-common (xxd))
-RUN DEBIAN_FRONTEND=noninteractive wget https://github.com/alexdobin/STAR/archive/STAR_2.4.1d.zip && unzip STAR_2.4.1d.zip && cd STAR-STAR_2.4.1d/source && make clean && make STAR && ln STAR /usr/local/bin/ && make clean && STARlong && ln STARlong /usr/local/STARlong && cd ../..
+RUN DEBIAN_FRONTEND=noninteractive wget https://github.com/alexdobin/STAR/archive/STAR_2.4.1d.zip && unzip STAR_2.4.1d.zip && cd STAR-STAR_2.4.1d/source && make clean && make STAR && ln STAR /usr/local/bin/ && make clean && make STARlong && ln STARlong /usr/local/STARlong && cd ../..
 
 # TopHat2 (requires gcc-4.8 and g++-4.8)
 RUN DEBIAN_FRONTEND=noninteractive wget https://ccb.jhu.edu/software/tophat/downloads/tophat-2.0.14.tar.gz && tar -xzf tophat-2.0.14.tar.gz && cd tophat-2.0.14 && CC=gcc-4.8 CXX=g++-4.8 ./configure --prefix=/usr/local && make && make install 
 
+RUN DEBIAN_FRONTEND=noninteractive pip install git+https://github.com/Novartis/railroadtracks.git@version_0.4.x#egg=railroadtracks
