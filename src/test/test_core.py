@@ -18,12 +18,6 @@ import tempfile, shutil, gzip
 from railroadtracks import core
 import railroadtracks.model.simulate
 
-try:
-    import ngs_plumbing
-    has_ngsp = True
-except ImportError:
-    has_ngsp = False
-
 
 
 class AssetsTestCase(unittest.TestCase):
