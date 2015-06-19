@@ -14,6 +14,7 @@ Railroadtracks is a Python package to handle connected computation steps for DNA
 |---------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
 | version_0.4.x | [![Build Status](https://travis-ci.org/Novartis/railroadtracks.svg?branch=version_0.4.x)](https://travis-ci.org/Novartis/railroadtracks/branches) |
 
+
 Installation
 ------------
 
@@ -31,6 +32,8 @@ The use the development version, the master branch can be installed with
 ```
 pip install https://github.com/Novartis/railroadtracks/archive/master.zip
 ```
+
+A <a href="http://www.docker.io">Docker</a> container is also availale (`lgautier/railroadtracks`).
 
 Documentation
 -------------
