@@ -15,7 +15,7 @@
 import unittest
 import tempfile, shutil, gzip
 
-from railroadtracks import core
+from railroadtracks import core, model.simulate
 
 try:
     import ngs_plumbing
@@ -96,7 +96,7 @@ class AssetsTestCase(unittest.TestCase):
         read1_fh.close()
         read2_fh = tempfile.NamedTemporaryFile(prefix='read2', suffix='.fq.gz', dir=self.tempdir, delete=False)
         read2_fh.close()
-        with open(PHAGEFASTA) as fasta_fh:
+        with open(model.simulate.PHAGEFASTA) as fasta_fh:
             reference = next(railroadtracks.model.simulate.readfasta_iter(fasta_fh))
             read1_io = gzip.GzipFile(read1_fh.name, mode='w')
             read2_io = gzip.GzipFile(read2_fh.name, mode='w')
