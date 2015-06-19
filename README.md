@@ -1,5 +1,5 @@
 
-<img src="doc/_static/logo_rrt.png" alt="RRT logo" style="width:400px">
+![logo](https://raw.githubusercontent.com/Novartis/railroadtracks/master/doc/_static/logo_rrt.png)
 
 Railroadtracks
 ==============
@@ -34,13 +34,13 @@ The use the development version, the master branch can be installed with
 pip install https://github.com/Novartis/railroadtracks/archive/master.zip
 ```
 
-A <a href="http://www.docker.io">Docker</a> container is also availale (`lgautier/railroadtracks`).
+A [Docker](http://www.docker.io) container is also availale (`lgautier/railroadtracks`).
 
 Documentation
 -------------
 
 Automated building of the documentation is being worked on.
 
-In the meantime there is a <a href="http://nbviewer.ipython.org/github/Novartis/railroadtracks/blob/master/doc/notebooks/railroadtracks_tutorial.ipynb"> tutorial as an ipython notebook</a>.
+In the meantime there is a [tutorial as an ipython notebook](http://nbviewer.ipython.org/github/Novartis/railroadtracks/blob/master/doc/notebooks/railroadtracks_tutorial.ipynb")
 
 
