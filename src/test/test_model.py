@@ -1207,6 +1207,7 @@ class ModelCRCHeadTailTestCase(unittest.TestCase):
 class GzipFastqFilePairTestCase(unittest.TestCase):
 
     def setUp(self):
+        self.tempdir = tempfile.mkdtemp()
         read1_fh = tempfile.NamedTemporaryFile(prefix='read1', suffix='.fq.gz', dir=self.tempdir, delete=False)
         read1_fh.close()
         self.read1_fn = read1_fh.name
@@ -1216,8 +1217,7 @@ class GzipFastqFilePairTestCase(unittest.TestCase):
         self.read2_fn = read2_fh.name
 
     def tearDown(self):
-        os.unlink(self.read1_fn)
-        os.unlink(self.read12_fn)
+      shutil.rmtree(self.tempdir)
 
     @unittest.skipIf(not has_ngsp,
                      'The Python package ngs-plumbing is missing.')
