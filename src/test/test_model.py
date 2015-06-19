@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tempfile, shutil, os, subprocess, csv, random, re, itertools
+import tempfile, shutil, os, subprocess, csv, random, re, itertools, gzip
 import unittest
 from railroadtracks import environment, unifex, core, rnaseq
 
@@ -1198,7 +1198,49 @@ class ModelCRCHeadTailTestCase(unittest.TestCase):
         data = '123456789'
         crc_c = self._test(data, crc)
         self.assertNotEqual(crc_a, crc_c)
-        
+
+
+class GzipFastqFilePairTestCase(unittest.TestCase):
+
+    def setUp(self):
+        read1_fh = tempfile.NamedTemporaryFile(prefix='read1', suffix='.fq.gz', dir=self.tempdir, delete=False)
+        read1_fh.close()
+        self.read1_fn = read1_fh.name
+
+        read2_fh = tempfile.NamedTemporaryFile(prefix='read2', suffix='.fq.gz', dir=self.tempdir, delete=False)
+        read2_fh.close()
+        self.read2_fn = read2_fh.name
+
+    def tearDown(self):
+        os.unlink(self.read1_fn)
+        os.unlink(self.read12_fn)
+
+    @unittest.skipIf(not has_ngsp,
+                     'The Python package ngs-plumbing is missing.')
+    def test_GzipFastqFilePair(self):
+        NFRAGMENTS_MATCH = 300
+        with open(PHAGEFASTA) as fasta_fh:
+            reference = next(railroadtracks.model.simulate.readfasta_iter(fasta_fh))
+            read1_io = gzip.GzipFile(self.read1_fn, mode='w')
+            read2_io = gzip.GzipFile(self.read2_fn, mode='w')
+            # reads from the target genome
+            read1_fh, read2_fh=railroadtracks.model.simulate.randomPEreads(read1_io,
+                                                                           read2_io,
+                                                                           reference,
+                                                                           n = NFRAGMENTS_MATCH)
+        read1_fh.close()
+        read2_fh.close()
+        fqp = rnaseq.GzipFastqFilePair(self.read1_fn,
+                                       self.read2_fn)
+        readpairs = tuple(fqp)
+        for i, (r1,r2) in enumerate(readpairs):
+            self.assertTrue(hasattr(r1, 'header'))
+            self.assertTrue(hasattr(r1, 'sequence'))
+            self.assertTrue(hasattr(r1, 'quality'))
+            self.assertTrue(hasattr(r2, 'header'))
+            self.assertTrue(hasattr(r2, 'sequence'))
+            self.assertTrue(hasattr(r2, 'quality'))
+        self.assertEqual(NFRAGMENTS_MATCH, i+1)
         
 if __name__ == '__main__':
     unittest.main()

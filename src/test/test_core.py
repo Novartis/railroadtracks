@@ -89,36 +89,6 @@ class AssetsTestCase(unittest.TestCase):
         undefoo.bar.name = '123'
         self.assertEqual('123', undefoo.bar.name)
 
-    @unittest.skipIf(not has_ngsp,
-                     'The Python package ngs-plumbing is missing.')
-    def test_GzipFastqFilePair(self):
-        NFRAGMENTS_MATCH = 300
-        read1_fh = tempfile.NamedTemporaryFile(prefix='read1', suffix='.fq.gz', dir=self.tempdir, delete=False)
-        read1_fh.close()
-        read2_fh = tempfile.NamedTemporaryFile(prefix='read2', suffix='.fq.gz', dir=self.tempdir, delete=False)
-        read2_fh.close()
-        with open(railroadtracks.model.simulate.PHAGEFASTA) as fasta_fh:
-            reference = next(railroadtracks.model.simulate.readfasta_iter(fasta_fh))
-            read1_io = gzip.GzipFile(read1_fh.name, mode='w')
-            read2_io = gzip.GzipFile(read2_fh.name, mode='w')
-            # reads from the target genome
-            read1_fh, read2_fh=railroadtracks.model.simulate.randomPEreads(read1_io,
-                                                                           read2_io,
-                                                                           reference,
-                                                                           n = NFRAGMENTS_MATCH)
-        read1_fh.close()
-        read2_fh.close()
-        fqp = rnaseq.GzipFastqFilePair(read1_fh.name,
-                                       read2_fh.name)
-        readpairs = tuple(fqp)
-        for i, (r1,r2) in enumerate(readpairs):
-            self.assertTrue(hasattr(r1, 'header'))
-            self.assertTrue(hasattr(r1, 'sequence'))
-            self.assertTrue(hasattr(r1, 'quality'))
-            self.assertTrue(hasattr(r2, 'header'))
-            self.assertTrue(hasattr(r2, 'sequence'))
-            self.assertTrue(hasattr(r2, 'quality'))
-        self.assertEqual(NFRAGMENTS_MATCH, i+1)
 
 if __name__ == '__main__':
     unittest.main()
