@@ -20,6 +20,7 @@ include src/model/edger.R
 include src/model/deseq.R
 include src/model/deseq2.R
 include src/model/limmavoom.R
+include src/model/ebseq.R
 include src/EF204940.fa
 include src/ef204940.gff
 include src/ef204940.gtf

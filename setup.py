@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2014 Novartis Institutes for Biomedical Research
+# Copyright 2014-2015 Novartis Institutes for Biomedical Research
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -48,6 +48,9 @@ setup(name=packagename,
                                   'src/ef204940.gtf',
                                   'src/templates/*.html']},
       include_package_data=True,
-      packages=[packagename, packagename + '.model'],
+      packages=[packagename, 
+                packagename + '.easy',
+                packagename + '.model',
+                packagename + '.test'],
       install_requires=['flufl.enum', 'networkx', 'jinja2', 'six', 'enum34'] #FIXME: enum34 not needed if Python >= 3.4
      )

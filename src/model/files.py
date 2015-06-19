@@ -1,4 +1,4 @@
-# Copyright 2014 Novartis Institutes for Biomedical Research
+# Copyright 2014-2015 Novartis Institutes for Biomedical Research
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,11 +19,14 @@ import tempfile
 import logging
 import warnings
 import shutil
+import abc
 import argparse
 logger = logging.getLogger(__name__)
 import subprocess
 from railroadtracks import core, environment
 from railroadtracks.core import SavedEntityAbstract, File, FileSequence
+
+from six import with_metaclass
 
 import sys
 if sys.version_info[0] < 3:
@@ -42,16 +45,17 @@ class ACTIVITY(core.Enum):
     __order__ = 'CONVERTFORMAT'
     CONVERTFORMAT = 'Convert file formats'
     FILTERREADS = 'Filter reads'
+    SORT = 'Sort'
 
-class SavedFASTA(File):
+class FASTAFile(File):
     """ FASTA file """
     _extension = ('.fa', '.fna', '.fasta', '.FASTA')
 
-class SavedGFF(File):
+class GFFFile(File):
     """ GFF file """
     _extension = ('.gff', '.gtf')
 
-class SavedFASTQ(File):
+class FASTQFile(File):
     """ FASTQ file """
     _extension = ('.fq', '.fastq')
 
@@ -59,7 +63,7 @@ class BAMFile(File):
     """ BAM file """
     _extension = ('.bam', )
 
-class SavedSAM(File):
+class SAMFile(File):
     """ SAM file """
     _extension = ('.sam', )
 
@@ -67,13 +71,13 @@ class BEDFile(File):
     """ BED file """
     _extension = ('.bed', )
 
-class FASTQPossiblyGzipCompressed(SavedFASTQ):
-    _extension = tuple(y for ext in SavedFASTQ._extension for y in (ext, ext+'.gz'))
+class FASTQPossiblyGzipCompressed(FASTQFile):
+    _extension = tuple(y for ext in FASTQFile._extension for y in (ext, ext+'.gz'))
     @property
     def iscompressed(self):
         return self.name.endswith('.gz')
 
-class SavedSAMSortedByID(SavedSAM):
+class SAMFileSortedByID(SAMFile):
     """ SAM file in which entries are sorted by read ID
     (this is required by tools such as HTSeq.). """
     pass
@@ -83,7 +87,7 @@ class BAMFileSortedByID(BAMFile):
     (this is required by tools such as HTSeq.). """
     pass
 
-class SavedCSV(File):
+class CSVFile(File):
     """ CSV file """
     _extension = ('.csv', )
     def iter_entry(self):
@@ -93,7 +97,7 @@ class SavedCSV(File):
             yield row
         fh.close()
 
-class SavedTSV(File):
+class TSVFile(File):
     """ Tab-separated files """
     _extension = ('.tsv', )
     def iter_entry(self):
@@ -175,13 +179,13 @@ class FilePattern(SavedEntityAbstract):
         return lasttime
 
 
-class SavedCSVSequence(FileSequence):
+class CSVFileSequence(FileSequence):
     """ Sequence of CSV files """
-    _type = SavedCSV
+    _type = CSVFile
 
-class SavedSAMSequence(FileSequence):
+class SAMFileSequence(FileSequence):
     """ Sequence of SAM files """
-    _type = SavedSAM
+    _type = SAMFile
 
 
 class SamtoolsFilter(core.StepAbstract):
@@ -294,7 +298,7 @@ class SamtoolsSamToBam(core.StepAbstract):
         Assets for :class:`SamtoolsSamToBam`
         
         """
-        Source = core.assetfactory('Source', [core.AssetAttr('samfile', SavedSAM, '')])
+        Source = core.assetfactory('Source', [core.AssetAttr('samfile', SAMFile, '')])
         Target = core.assetfactory('Target', [core.AssetAttr('bamfile', BAMFile, '')])
 
     activities = (ACTIVITY.CONVERTFORMAT, )
@@ -343,7 +347,7 @@ class SamtoolsBamToSam(core.StepAbstract):
         
         """
         Source = core.assetfactory('Source', [core.AssetAttr('bamfile', BAMFile, '')])
-        Target = core.assetfactory('Target', [core.AssetAttr('samfile', SavedSAM, '')])
+        Target = core.assetfactory('Target', [core.AssetAttr('samfile', SAMFile, '')])
 
     activities = (ACTIVITY.CONVERTFORMAT, )
 
@@ -429,3 +433,122 @@ def ensure_sam(filename):
         return open(filename, 'r')
     else:
         raise ValueError('The filename "%s" is not .sam neither .bam' % filename)
+
+
+class AssetsSorter(core.AssetsStep):
+    Source = core.assetfactory('Source', [core.AssetAttr('alignedreads',BAMFile, '')])
+    Target = core.assetfactory('Target', [core.AssetAttr('sortedbam', BAMFile, '')])
+
+class SorterAbstract(with_metaclass(abc.ABCMeta, core.StepAbstract)):
+    """
+
+    A sorting step.
+
+    """
+    activities = (ACTIVITY.SORT, )
+    Assets = AssetsSorter
+
+class SamtoolsSorterByID(SorterAbstract):
+    """
+    """
+
+    _name = 'samtools-sortbyid'
+    _default_execpath = 'samtools'
+
+    def __init__(self, executable=None):
+        if executable is None:
+            executable = type(self)._default_execpath
+        self._execpath = executable
+        self._version = None
+
+    @property
+    def version(self):
+        if self._version is None:
+            self._version = samtools_getversion(self._execpath)
+        return self._version
+
+    def run(self, assets, parameters = tuple()):        
+        # build command line
+        cmd = ['%s' % self._execpath]
+        cmd.append('sort')
+        cmd.append('-n')
+        cmd.append('-f') # otherwise 'samtools' is interpreting the output as a prefix rather than a complete file name
+        cmd.extend(parameters)
+        cmd.append('%s' % assets.source.alignedreads.name)
+        cmd.append('%s' % assets.target.sortedbam.name) 
+        with open(os.devnull, "w") as fnull:
+            logger.debug(subprocess.list2cmdline(cmd))
+            returncode = subprocess.check_call(cmd, 
+                                               stdout = fnull,
+                                               stderr = fnull)
+        return (cmd, returncode)
+
+
+
+class BedtoolsBamToFastq(core.StepAbstract):
+    """
+    Convert a BAM file into a FASTQ file
+    """
+    _name = 'BAM-to-FASTQ'
+    _default_execpath = 'bedtools'
+
+    class Assets(core.AssetsStep):
+        """
+        Assets for :class:`BedtoolsBamToFastq`
+        
+        """
+        Source = core.assetfactory('Source', [core.AssetAttr('bamfile', BAMFile, '')])
+        Target = core.assetfactory('Target', [core.AssetAttr('fastqfile', FASTQFile, '')])
+
+    activities = (ACTIVITY.CONVERTFORMAT, )
+
+    def __init__(self, executable=None):
+        if executable is None:
+            executable = type(self)._default_execpath
+        self._execpath = executable
+        self._version = None
+
+    @property
+    def version(self):
+        if self._version is None:
+            cmd = ('bedtools', '--version')
+            output = subprocess.check_output(cmd)
+            m = re.match("^bedtools v(.+)", output)
+            self._version = m.groups()[0]
+        return self._version
+        
+    def run(self, assets, parameters = tuple()):
+        cmd = [self._execpath, 'bamtofastq',
+               '-i', assets.source.bamfile.name, 
+               '-fq', assets.target.fastqfile.name, ]
+        with open(os.devnull, 'w') as fnull: 
+            logging.debug(cmd)
+            returncode = subprocess.check_call(cmd,
+                                               stdout = fnull,
+                                               stderr = fnull)
+        return (cmd, returncode)
+
+
+class BedtoolsBamToFastqPE(BedtoolsBamToFastq):
+
+
+    _name = 'BAM-to-FASTQ-PE'
+
+    class Assets(BedtoolsBamToFastq.Assets):
+        Target = core.assetfactory('Target', [core.AssetAttr('fastqfile', FASTQFile, ''),
+                                              core.AssetAttr('fastqfile2', FASTQFile, '')])
+
+    activities = (ACTIVITY.CONVERTFORMAT, )
+        
+    def run(self, assets, parameters = tuple()):
+        cmd = [self._execpath, 'bamtofastq',
+               '-i', assets.source.bamfile.name, 
+               '-fq', assets.target.fastqfile.name,
+               '-fq2', assets.target.fastqfile2.name ]
+        with open(os.devnull, 'w') as fnull: 
+            logging.debug(cmd)
+            returncode = subprocess.check_call(cmd,
+                                               stdout = fnull,
+                                               stderr = fnull)
+        return (cmd, returncode)
+

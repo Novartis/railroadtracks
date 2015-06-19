@@ -22,10 +22,13 @@
 ##                - sample_id: this must correspond to the column names in the file counttable_fn
 ##                - group: this will contain group information for 2-sample testing
 ##                - libsize: library size (FIXME: should this )
+## maxround: numerical value [optional]
+## qtrm: Qtrm in EBSeq::EBTest
+## qtrmcut: QtrmCut in EBSeq::EBTest
 ### FIXME: format for results ? should be common to all differential expression results
 ## results_fn: file name for results
 
-require("limma")
+require("EBSeq")
 
 run <- local({
     ## Return R connection, deciding on whether it is gzip-compressed
@@ -49,21 +52,35 @@ run <- local({
 
     run <- function(railroadtracks_import) {
         p <- railroadtracks_import
-        dataf <- load_csv(p$counttable_fn, row_names=1)
-        dataf_si <- load_csv(p$sampleinfo_fn, row_names="sample_id")
-        l <- levels(dataf_si$group)
-        # FIXME: test that only 2 levels, or should this be done in the Python wrapper ?
-        x = paste(rev(l), sep="-")
-        design <- with(dataf_si, model.matrix(~group))
-        colnames(design) <- l
-        #ct <- limma::makeContrasts(contrasts=x, levels=design)
-        v <- limma::voom(dataf, design)
-        fit <- lmFit(v, design)
-        fit <- eBayes(fit)
-        ##topTags(de)
+        # data matrix
+        m <- load_csv(p$counttable_fn, row_names=1)
+        m <- as.matrix(m)
+        #
+        m_sizes = EBSeq::MedianNorm(m)
+        sampleinfo <- load_csv(p$sampleinfo_fn, row_names="sample_id")
+
+        maxround <- with(p, ifelse(is.null(maxround), 5, maxround))
+        qtrm <- with(p, ifelse(is.null(qtrm), .75, qtrm))
+        qtrmcut <- with(p, ifelse(is.null(qtrmcut), 10, qtrmcut))
+
+        ebt <- EBSeq::EBTest(Data=m,
+                             Conditions=sampleinfo$group,
+                             sizeFactors=m_sizes,
+                             maxround=maxround,
+                             Qtrm=qtrm,
+                             QtrmCut=qtrmcut)
+        # matrix of PP (presumably "posterior probabilities")
+        pp <- EBSeq::GetPPMat(ebt)
+        # fold-change
+        fc <- EBSeq::PostFC(ebt)
+        # write all this in a result file
+        res <- cbind(as.data.frame(pp),
+                     fc[c("PostFC", "RealFC")],
+                     ID=rownames(pp))
         out_conn <- autoopen(p$diffexp_fn, "w")
-        write.csv(topTable(fit, coef=2, number=Inf), file=out_conn)
+        write.csv(res, file=out_conn)
         close(out_conn)
-    }   
+    }
+
     run
 })

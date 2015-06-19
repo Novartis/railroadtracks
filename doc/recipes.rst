@@ -21,8 +21,7 @@ Recipes
 
 The model, together with the persistence layer, is designed to make the writing
 of sequences of steps for RNA-Seq data processing rather simple and
-and make changing to an alternative step
- (e.g., aligner, differential expression method, etc...)
+and make changing to an alternative step (e.g., aligner, differential expression method, etc...)
 trivial. This is also designed to make coexisting variants something a user does not
 have to worry about (unless inclined to - the system is open).
 
@@ -194,7 +193,7 @@ from the samples and sequencing, are specified and the other file names will be 
 Objects inheriting from :class:`AssetSet` are expected to have a method :meth:`AssetSet.createundefined` that
 creates an undefined set of assets, and this can be used in recipes (see example below).
 
-.. literalinclude:: ../src/tests.py
+.. literalinclude:: ../src/test/test_core.py
    :language: python
    :start-after: # -- createundefined-begin
    :end-before: # -- createundefined-end
@@ -222,7 +221,7 @@ Setup
 -----
 
 
-.. literalinclude:: ../src/tests.py
+.. literalinclude:: ../src/test/test_recipe.py
    :language: python
    :start-after: # -- recipe-init-begin
    :end-before: # -- recipe-init-end
@@ -230,7 +229,7 @@ Setup
 
 The package is also able to generate a small dataset based on a phage:
 
-.. literalinclude:: ../src/tests.py
+.. literalinclude:: ../src/test/test_recipe.py
    :language: python
    :start-after: # -- recipe-data-begin
    :end-before: # -- recipe-data-end
@@ -239,7 +238,7 @@ The package is also able to generate a small dataset based on a phage:
 Simple recipe
 -------------
 
-.. literalinclude:: ../src/tests.py
+.. literalinclude:: ../src/test/test_recipe.py
    :language: python
    :start-after: # -- recipesimple-test-begin
    :end-before: # -- recipesimple-test-end
@@ -257,7 +256,7 @@ and `db_dn` is the database file.
 Loops, nested loops, and many variants
 --------------------------------------
 
-.. literalinclude:: ../src/tests.py
+.. literalinclude:: ../src/test/test_recipe.py
    :language: python
    :start-after: # -- recipeloop-test-begin
    :end-before: # -- recipeloop-test-end

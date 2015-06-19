@@ -1,4 +1,4 @@
-# Copyright 2014 Novartis Institutes for Biomedical Research
+# Copyright 2014-2015 Novartis Institutes for Biomedical Research
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,6 +26,12 @@ if sys.version_info[0] < 3:
         def __enter__(self):
             return self
         def __exit__(self, exc_type, exc_val, exc_tb):
+            if self.stdout:
+                self.stdout.close()
+            if self.stderr:
+                self.stderr.close()
+            if self.stdin:
+                self.stdin.close()
             self.wait()
 else:
     # Python 3 !
@@ -48,6 +54,7 @@ class SavedEntityAbstract(with_metaclass(abc.ABCMeta, object)):
     """
 
     _defined = False
+    _name = False
     _extension = None
 
     def __init__(self, *args, **kwargs):
@@ -71,6 +78,17 @@ class SavedEntityAbstract(with_metaclass(abc.ABCMeta, object)):
             # self is the newest then
             return True
         return t_self > t
+
+    @staticmethod
+    def _hash_components(cls, name):
+        clsname = cls.__module__ + '.' + cls.__name__
+        return (clsname, name)
+
+    @property
+    def hashdb(self):
+        if not self._defined:
+            raise ValueError("The hashdb for an undefined saved entity cannot be computed.")
+        return hash(type(self)._hash_components(type(self), self._name))
 
     @abc.abstractmethod
     def __iter__(self):
@@ -157,7 +175,13 @@ class FileSequenceAbstract(SavedEntityAbstract):
     """ Sequence of files """
     _type = SavedEntityAbstract
 
+    @property
+    def hashdb(self):
+        return hash((super(FileSequenceAbstract, self).hashdb, 
+                     tuple(x for x in self)))
+
     def __init__(self, savedentities):
+        savesentities = tuple(savedentities)
         if savedentities is not None:
             # sanity checks
             savedentities = tuple(savedentities)
@@ -185,6 +209,7 @@ class FileSequenceAbstract(SavedEntityAbstract):
             yield (type(se), se.name)
 
 
+
 class FileSequence(FileSequenceAbstract):
     _type = File
 
@@ -210,6 +235,11 @@ class StepAbstract(with_metaclass(abc.ABCMeta, object)):
 
     version = abc.abstractproperty(None, None, None,
                                    "Version of the executable associated with the step.")
+
+
+    @property
+    def hashdb(self):
+        return hash((type(self), self._default_execpath, self.version, self.activities))
 
     @abc.abstractmethod
     def run(self, assets, parameters=tuple()):
@@ -312,6 +342,20 @@ class AssetMeta(type):
 class AssetSet(with_metaclass(AssetMeta, object)):
     """ Ordered set of assets """
 
+    @property
+    def hashdb(self):
+        lst = list()
+        for x in self._sources:
+            val = getattr(self, x.name)
+            if val is None:
+                if not x.allownone:
+                    raise ValueError("Invalid asset")
+                hashsb = val
+            else:
+                hashdb = val.hashdb
+            lst.append((x.name, hashdb))
+        return hash(tuple(lst))
+
     def __init__(self, *args):
         sources = getattr(self, AssetMetaReserved.SOURCES.value)
         assert len(args) == len(sources), 'The following parameter(s) must be specified, and in that order: %s' % \
@@ -392,6 +436,10 @@ class AssetsStep(object):
     Source = assetfactory('Source', [])
     Target = assetfactory('Target', [])
 
+    @property
+    def hashdb(self):
+        return hash((self.source.hashdb, self.target.hashdb))
+
     def __init__(self, source, target=None):
         """
         :param source: 
@@ -429,6 +477,11 @@ class AssetsStep(object):
                  type(self), type(field_attr))
         return obj
 
+    def __str__(self):
+        return os.linesep.join((super(AssetsStep, self).__str__(), 
+                                str(self.source), 
+                                '---', 
+                                str(self.target)))
 
 
 def steplist(model):

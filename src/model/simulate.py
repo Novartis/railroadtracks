@@ -1,4 +1,4 @@
-# Copyright 2014 Novartis Institutes for Biomedical Research
+# Copyright 2014-2015 Novartis Institutes for Biomedical Research
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,16 +28,14 @@ logger = logging.getLogger(__name__)
 from railroadtracks import environment, core, unifex
 from railroadtracks.model.files import (File, 
                                         FilePattern,
-                                        SavedGFF,
+                                        GFFFile,
                                         FASTQPossiblyGzipCompressed,
                                         BEDFile)
-import sys
-import os
+import sys, os, argparse, tempfile, re
 import random
 import collections
+from collections import deque
 import csv
-import re
-import tempfile
 import subprocess
 import shutil
 
@@ -136,7 +134,8 @@ else:
 
 def randomfastq_pe(entry, n, length, insert, lane=1, tile=2):
     sequence_rc = entry.sequence[::-1].translate(COMPLEMENT_TABLE)
-    dummyqual = b'~'*length
+    quality_template = b'wxyz{|}~'
+    dummyqual = (quality_template * ((length/len(quality_template))+1))[:length]
 
     for r_i in range(n):
         r_start = randomreadstart(entry, length+insert+length)
@@ -303,7 +302,7 @@ class FluxsimulatorExpression(core.StepAbstract):
     activities = (ACTIVITY.SIMULATE, )
     class Assets(core.AssetsStep):
         Source = core.assetfactory('Source', [core.AssetAttr('annotation_gtf',
-                                                             SavedGFF, ''),
+                                                             GFFFile, ''),
                                               core.AssetAttr('genome_dir',
                                                              FilePattern, ''),
                                               core.AssetAttr('parameters',
@@ -485,3 +484,109 @@ class FluxsimulatorPro(object):
             csv_r = csv.reader(fh, delimiter="\t")
             for row in csv_r:
                 yield FluxsimulatorProEntry(*(row[:l]))
+
+
+class FluxsimulatorDerivedExpression(core.StepAbstract):
+    """
+    Derive new expression values from an existing Flux-Simulator .PRO file by shuffling a proportion
+    of expression values.
+
+    The proportion to be shuffled can be modified as a parameter.
+
+    """
+    _name = 'flux-simulator-derivedexpression'
+    _default_execpath = None
+    _version = railroadtracks.__version__
+    activities = (ACTIVITY.SIMULATE, )
+    COLNAMES = ('Locus', 'Transcript_ID', 'Coding', 'Length', 'Expressed Fraction', 'Expressed Number')
+
+    class Assets(core.AssetsStep):
+        Source = core.assetfactory('Source', [core.AssetAttr('parameters_and_pro',
+                                                             FluxSimulatorParametersAndPro, '')])
+        Target = core.assetfactory('Target', [core.AssetAttr('parameters_and_pro',
+                                                             FluxSimulatorParametersAndPro, '')])
+                                          
+    parser = argparse.ArgumentParser(_name)
+    parser.add_argument('--percentage',
+                        default = 20,
+                        type = float,
+                        help='Percentage of expression values to change')
+    parser.add_argument('--tmp-dir',
+                        dest='tmp_dir',
+                        default=None)
+
+    def __init__(self, execpath=None):
+        if execpath is None:
+            self._execpath = self._default_execpath
+        else:
+            self._execpath = execpath
+    @property
+    def version(self):
+        return self._version
+        
+    def run(self, assets, parameters=()):
+        options, unknown = self.parser.parse_known_args(parameters)
+        parameters_out = assets.target.parameters_and_pro.name + '.par'
+        ok_pe = False
+        missing_pe = True
+        temp_dir = tempfile.mkdtemp()
+        syntheticreads_prefix = os.path.join(temp_dir, 'mergedpairs') # is it really a bed file ?
+        with open(assets.source.parameters_and_pro.name + '.par') as fh_in, \
+             open(parameters_out, 'w') as fh_out:
+            logger.debug('Copying parameters from %s to %s.' % (fh_in.name, fh_out.name))
+            for row in fh_in:
+                if row.startswith('LIB_FILE_NAME'):
+                    raise ValueError('The parameter file should not define LIB_FILE_NAME')
+                if row.startswith('SEQ_FILE_NAME'):
+                    raise ValueError('The parameter file should not define SEQ_FILE_NAME')
+                if row.startswith('TMP_DIR') and options.tmp_dir is not None:
+                    # silently pass - TMP_DIR is written later
+                    pass
+
+                m = re.match('PAIRED_END\t(.+)', row)
+                if m is not None:
+                    missing_pe = False
+                    if m.groups()[0] == 'true':
+                        ok_pe = True
+                fh_out.write(row)
+            if options.tmp_dir is not None:
+                fh_out.write(TMP_DIR_TEMPLATE % ({'tmp_dir': options.tmp_dir}))
+
+        if not ok_pe and not missing_pe:
+            raise ValueError('The input parameter file does not set PAIRED_END to true')
+        logger.debug('Deriving a new profile from %s into %s.' % (assets.source.parameters_and_pro.name + '.pro',
+                                                                  assets.target.parameters_and_pro.name + '.pro'))
+        # First read it all (easier to swap)
+        ef_i = self.COLNAMES.index('Expressed Fraction')
+        en_i = self.COLNAMES.index('Expressed Number')
+        allrows = list()
+        with open(assets.source.parameters_and_pro.name + '.pro') as fh_in:
+            csv_r = csv.reader(fh_in, delimiter='\t')
+            for n_entries, row in enumerate(csv_r):
+                allrows.append((n_entries, row))
+        # determine which rows will be modified:
+        # 1- get the indices for all rows
+        sample = list(range(n_entries))
+        # 2- shuffle the indices (we will take the first indices in the shuffle)
+        random.shuffle(sample)
+        # number of entries modified
+        n_modified = int(round(n_entries * options.percentage * 1.0 / 100))
+        # require an even number (because we are going to swap the expression values)
+        if n_modified % 2 != 0:
+            n_modified += 1
+        # the first indices will be our sample
+        sample = sample[:n_modified]
+        
+        # iterate through pairs of indices to be swapped
+        for i in range(0, n_modified, 2):            
+            spl_i = sample[i]
+            spl_j = sample[i+1]
+            # swap the "Expressed Fraction" (ef_i)
+            allrows[spl_i][1][ef_i], allrows[spl_j][1][ef_i] = allrows[spl_j][1][ef_i], allrows[spl_i][1][ef_i]
+            # swap the "Expressed Number" (en_i)
+            allrows[spl_i][1][en_i], allrows[spl_j][1][en_i] = allrows[spl_j][1][en_i], allrows[spl_i][1][en_i]
+
+        with open(assets.target.parameters_and_pro.name + '.pro', 'w') as fh_out:
+            csv_w = csv.writer(fh_out, delimiter='\t')
+            csv_w.writerows(row for row_i, row in allrows)
+        return (None, 0)

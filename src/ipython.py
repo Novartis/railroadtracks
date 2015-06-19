@@ -1,4 +1,4 @@
-# Copyright 2014 Novartis Institutes for Biomedical Research
+# Copyright 2014-2015 Novartis Institutes for Biomedical Research
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,16 @@ from railroadtracks import core, easy
 from railroadtracks.hortator import _TASK_DONE
 from collections import namedtuple
 from jinja2 import Environment, PackageLoader
-from railroadtracks import core
+from railroadtracks import core, hortator, easy
+import railroadtracks.easy.taskgraph
+import railroadtracks.easy.tasksetgraph
+import networkx
+try:
+    import pygraphviz
+    has_pygraphviz = True
+except:
+    has_pygraphviz = False
+
 env = Environment(loader=PackageLoader('railroadtracks'),
                   extensions = ['jinja2.ext.with_'])
 
@@ -141,43 +150,172 @@ def html_task_view(task,
     res = template.render(d)
     return res
 
+def node_label(instance):
+    if isinstance(instance, hortator.StoredEntity):
+        label_ext = "."+instance.entityname.split(".")[-1]
+        label_cls = instance.clsname
+        if len(label_ext) < len(label_cls):
+            label = label_ext
+        else:
+            label = label_cls
+        label = 't:%i - %s' % (instance.id, label)
+    elif isinstance(instance, hortator.StoredSequence):
+        label_cls = instance.clsname
+        label = label_cls
+        label = 's:%i - %s' % (instance.id, label)
+    else:
+        label = 'a:%i - %s' % (instance.task_id, instance.call.step._name)
+    return label
+
+def basic_tasknode_func(ag, inst, nodelabel):
+    node = ag.get_node(nodelabel)
+    node.attr['shape'] = 'box'
+    node.attr['tooltip'] = 'parameters: %s' % ' '.join(str(x) for x in inst.call.parameters)
+    return node
+
+def default_tasknode_func(ag, inst, nodelabel):
+    node = basic_tasknode_func(ag, inst, nodelabel)
+    if inst.status == easy._TASK_FAILED:
+        node.attr.update(style='filled', fillcolor='black', fontcolor="white")
+    elif inst.status == easy._TASK_DONE:
+        node.attr.update(style='filled', fillcolor='white', fontcolor="black", penwidth=1.5)
+    else:
+        node.attr.update(style='filled', fillcolor='white', color="grey", fontcolor="grey")
+    return node
+
+def default_assetnode(ag, inst, nodelabel, font_size, pred_done):
+    node = ag.get_node(nodelabel)
+    node.attr['fontsize'] = int(font_size*.75)
+    node.attr['tooltip'] = inst.entityname
+    if not pred_done:
+        node.attr['fontcolor'] = "grey"
+        node.attr['color'] = "grey"
+    return node
+
+def default_assetseqnode(ag, inst, nodelabel, font_size, pred_done):
+    node = ag.get_node(nodelabel)
+    node.attr['fontsize'] = int(font_size*.75)
+    if not pred_done:
+        node.attr['fontcolor'] = "grey"
+        node.attr['color'] = "grey"
+    return node
+
+def _get_pred_done(node, digraph):
+    pred_done = True
+    for pnode in digraph.predecessors(node):
+        instance2 = digraph.node[pnode]['instance']
+        if not hasattr(instance2, 'status'):
+            pred_done = _get_pred_done(pnode, digraph)
+        elif instance2.status != hortator._TASK_DONE:
+            pred_done = False
+            break
+    return pred_done
 
 
-from railroadtracks.hortator import GRAPHDISPLAY
-    
-def _svg_graph(project, stored_entities,
-               func,
-               display=GRAPHDISPLAY.STEPLEVEL):
-    import networkx as nx
-    dag_list = list()
-    for stored_entity in stored_entities:
-        dag = func(stored_entity,
-                   display=display)
-        dag_list.append(dag)
-    final_dag = nx.compose_all(dag_list)
-    import tempfile
-    with tempfile.NamedTemporaryFile(suffix = '.svg') as fh_out:
-        adag = nx.to_agraph(final_dag)
-        adag.layout(prog=display.value['layout'],
-                    args=display.value['layoutargs'])
-        adag.draw(path = fh_out.name)
-        svg = fh_out.read()
+def agraph_fromdigraph(digraph, layout = "dot",
+                       nodelabel_func = node_label,
+                       tasknode_func = default_tasknode_func,
+                       assetnode_func = default_assetnode,
+                       assetseqnode_func = default_assetseqnode,
+                       graph_size = None,
+                       font_size = 14):
+    """
+    Plot a :class:`DiGraph` from networkx.
+
+    :param digraph: a :class:`DiGraph`
+    :param format: the output format
+    :param layout: the layout algorithm (from graphviz)
+    :param nodelabel_func:
+    :param tasknode_func:
+    :param assetnode_func:
+    :param assetseqnode_func:
+    :param graph_size: attribute "size" for the graph (e.g., "3,2")
+    :param font_size: font size
+    """
+    if not has_pygraphviz:
+        raise RuntimeError('The Python package "pygraphviz" is required but could not be imported.')
+    ag = pygraphviz.AGraph(directed=True)
+    if graph_size is not None:
+        ag.graph_attr.update(size = graph_size)
+    ag.graph_attr.update(font_size = font_size)
+    for node in networkx.topological_sort(digraph):
+        instance = digraph.node[node]['instance']
+        nodelabel = nodelabel_func(instance)
+        for node2 in digraph.successors(node):
+            instance2 = digraph.node[node2]['instance']
+            if _get_pred_done(node2, digraph):
+                # if all predecessors are done, default edge display
+                ag.add_edge(nodelabel, nodelabel_func(instance2))
+            else:
+                # if not all predecessors done, lighter edge
+                ag.add_edge(nodelabel, nodelabel_func(instance2), color="grey")
+        if isinstance(instance, easy.Task):
+            tasknode_func(ag, instance, nodelabel)
+            pred_done = instance.status == hortator._TASK_DONE
+        else:
+            pred_done = _get_pred_done(node, digraph)
+            if isinstance(instance, hortator.StoredSequence):
+                assetseqnode_func(ag, instance, nodelabel, font_size, pred_done)
+            else:
+                assetnode_func(ag, instance, nodelabel, font_size, pred_done)
+    ag.layout(prog=layout)
+    return ag
+
+
+def _plot_digraph(digraph, format, graph_size=None):
+    ag = agraph_fromdigraph(digraph, graph_size=graph_size)
+    string = ag.draw(format=format)
+    return string
+
+def svg_digraph(digraph, graph_size=None):
+    return _plot_digraph(digraph, 'svg', graph_size=graph_size)
+
+def svg_taskgraph_view(taskgraph, graph_size=None):
+    svg = svg_digraph(taskgraph.digraph)
     return svg
 
-def svg_provenancegraph(project, stored_entity, display=GRAPHDISPLAY.STEPLEVEL):
-    return _svg_graph(project, stored_entity,
-                      project.todo.provenancegraph_storedentity,
-                      display = display)
+def agraph_fromtasksetgraph(tasksetgraph, taskgraph,
+                            graph_size=None,
+                            nodelabel_func = node_label, layout="dot"):
+    ag = agraph_fromdigraph(taskgraph.digraph, graph_size=graph_size, layout=layout)
+    el = tasksetgraph.execution_list()
+    knownlabels = dict()
+    for tasksetbundle in el:
+        if len(tasksetbundle.taskset) == 1:
+            continue
+        nodebundle = list()
+        label = tasksetbundle.label
+        if label is None:
+            a_set = set()
+            for task in tasksetbundle.taskset:
+                a_set.update(set(a.value for a in task.activities)),
+            label = '/'.join(a_set)
 
-def svg_destinationgraph_stepconcrete(project, step_concrete, display=GRAPHDISPLAY.STEPLEVEL):
-    return _svg_graph(project, step_concrete,
-                      project.todo.destinationgraph_stepconcrete,
-                      display = display)
+        if label not in knownlabels:
+            knownlabels[label] = 1
+        else:
+            knownlabels[label] += 1
+            label = "%s - %i" % (label, knownlabels[label])
 
-def svg_destinationgraph_storedentity(project, stored_entity, display=GRAPHDISPLAY.STEPLEVEL):
-    return _svg_graph(project, stored_entity,
-                      project.todo.destinationgraph_storedentity,
-                      display = display)
+        for task in tasksetbundle.taskset:
+            #node = easy.taskgraph.Node('Task', task.task_id)
+            nodelabel = nodelabel_func(task)
+            nodebundle.append(nodelabel)
+
+        ag.add_subgraph(nodebundle, name='cluster_' + label, label=label, color="grey")
+    # likely bug in pygraphviz - this is needed
+    ag.layout(prog=layout)
+    return ag
+        
+def svg_tasksetgraph_view(tasksetgraph, taskgraph,
+                          graph_size=None,
+                          nodelabel_func = node_label, layout="dot"):
+    ag = agraph_fromtasksetgraph(tasksetgraph, taskgraph,
+                                 graph_size=graph_size,
+                                 nodelabel_func = node_label, layout="dot")
+    svg = ag.draw(format='svg')
+    return svg
+
 
 def _project_status_curses(stdscr, project, checkinterval=3):
     import time, curses, datetime
@@ -234,7 +372,6 @@ def _project_status_curses(stdscr, project, checkinterval=3):
             stdscr.refresh()
 
 def _project_status_str(args):
-    import railroadtracks.easy as easy
     import importlib
     model = importlib.import_module(args.model)
     project = easy.Project(model, args.wd, db_fn=args.db_fn)
@@ -257,7 +394,8 @@ def init_printing():
     html_f.for_type(easy.Project, html_project_view)
     html_f.for_type(core.AssetSet, html_assetset_view)
     html_f.for_type(easy.Task, html_task_view)
-
+    svg_f = ip.display_formatter.formatters['image/svg+xml']
+    svg_f.for_type(easy.taskgraph.TaskGraph, svg_taskgraph_view)
 
 if __name__ == '__main__':
     import argparse

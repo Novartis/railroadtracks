@@ -24,7 +24,6 @@ I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
 	@echo "  html       to make standalone HTML files"
-	@echo "  htmlslides to make HTML slides"
 	@echo "  dirhtml    to make HTML files named index.html in directories"
 	@echo "  singlehtml to make a single large HTML file"
 	@echo "  pickle     to make pickle files"
@@ -51,28 +50,13 @@ help:
 clean:
 	rm -rf $(BUILDDIR)/*
 
-htmlslides:
-	$(SPHINXBUILD) -ab slides -D master_doc=slides $(ALLSPHINXOPTS) $(BUILDDIR)/slides
-	@echo
-	@echo "Build finished. The HTML slides are in $(BUILDDIR)/slides."
-
-presentation: html latexpdf htmlslides
-	@cd _build && cp latex/railroadtracks.pdf slides/_static/
-	@cd .. && python setup.py sdist
-	@cp ../dist/railroadtracks-0.2.0-dev.tar.gz _build/slides/_static/
-
-presentation-package: presentation
-	@cd _build && zip -r9 railroadtracks-presentation.zip index.html slides/ html/
-
-
 notebooks:
 	@echo "Building the IPython notebooks..."
 	mkdir -p _static/notebooks
-	@cd _static/notebooks && runipy -o railroadtracks_tutorial.ipynb && ipython nbconvert railroadtracks_tutorial.ipynb
-	@echo "Sanitizing the IPython notebooks"
-	@cd _static/notebooks && find . -name '*.ipynb' -exec sed -i '' "s/${USER}/thisuser/g" '{}' \;
-	@cd _static/notebooks && find . -name '*.html' -exec sed -i '' "s/${USER}/thisuser/g" '{}' \;
-
+	notedown -o notebooks/railroadtracks_tutorial.ipynb --run notebooks/railroadtracks_tutorial.md
+	ipython nbconvert --to rst notebooks/railroadtracks_tutorial.ipynb
+	ipython nbconvert --to html notebooks/railroadtracks_tutorial.ipynb --output _static/notebooks/railroadtracks_tutorial.html
+	cp notebooks/railroadtracks_tutorial.ipynb _static/notebooks/
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo

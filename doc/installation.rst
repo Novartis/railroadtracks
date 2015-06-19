@@ -19,7 +19,7 @@ Installation
 Requirements
 ------------
 
-This was developed for Python 2.7. 
+This was developed for Python 2.7 and Python 3.4
 
 .. note:: 
 
@@ -38,20 +38,21 @@ A number of python packages are required or recommended (all of which are availa
 - `ngs_plumbing <http://pythonhosted.org/ngs_plumbing/>`
 
 The model steps included require a number of third-party tools in order to have all steps working.
-A missing tool does not prevent this package from working, but the related functionality
-will not be working.
+The tools themselves are not included and a missing tool does not prevent this package from working, but the related functionality (running that tool) will not be working.
 
 At the time of writing, the tools are:
 
-- `samtools <http://samtools.sourceforge.net>`
+- `bedtools2 <http://bedtools.readthedocs.org/en/latest/index.html>`
+- `bwa <http://bio-bwa.sourceforge.net/>`
 - `bowtie <http://bowtie-bio.sourceforge.net/>`
 - `bowtie2 <http://bowtie-bio.sourceforge.net/bowtie2>`
+- `GSNAP <http://research-pub.gene.com/gmap/>`
+- `HTSeq <http://www-huber.embl.de/users/anders/HTSeq>` (for the executable `htseq-count`)
+- `sailfish <http://www.cs.cmu.edu/~ckingsf/software/sailfish/>`
+- `samtools <http://samtools.sourceforge.net>`
+- `STAR <https://github.com/alexdobin/STAR>`
 - `tophat <http://ccb.jhu.edu/software/tophat/index.shtml>`
 - `tophat2 <http://ccb.jhu.edu/software/tophat/index.shtml>`
-- `GSNAP <http://research-pub.gene.com/gmap/>`
-- `sailfish <http://www.cs.cmu.edu/~ckingsf/software/sailfish/>`
-- `STAR <https://github.com/alexdobin/STAR>`
-- `HTSeq <http://www-huber.embl.de/users/anders/HTSeq>` (for the executable `htseq-count`)
 - `R <http://www.r-project.org>`, with libraries:
     - `rjson <http://cran.r-project.org/package=rjson>` (required for any interaction with R)
   and bioconductor libraries
@@ -60,10 +61,11 @@ At the time of writing, the tools are:
     - `DESeq2 <http://www.bioconductor.org/packages/release/bioc/html/DESeq2.html>`
     - `limma <http://www.bioconductor.org/packages/release/bioc/html/limma.html>` (for the method `voom`)
     - `edgeR <http://www.bioconductor.org/packages/release/bioc/html/edgeR.html>`
+    - `EBSeq <http://www.bioconductor.org/packages/release/bioc/html/EBSeq.html>`
 
 .. note::
 
-   Running the tests with `-v` (see below) will tell which tools are missing to have all functionality.
+   Running the tests with `-v` (see below) will tell which tools are missing to have all functionality (see below for instructions about running the tests).
 
 
 The package is including a small genome
@@ -87,13 +89,13 @@ Running the unit-tests can be done after installation
 
 .. code-block:: bash
 
-   python -m railroadtracks.tests # for a detail of the tests, add "-v"
+   python -m unittest discover railroadtracks
 
 .. note-installation-slide-end
 
 
 .. note::
 
-   While the unit tests use a very small dataset included in the package (a viral genome),
+   While the unit tests use a very small dataset included in the package (a viral phage genome),
    running the test can take a bit of disk space (for instance, at the time of writing
    STAR indexes take a rather large amount of space for an otherwise rather small genome).

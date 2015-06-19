@@ -34,10 +34,12 @@ the alternatives, and possibly computing several times the tasks common to sever
     The toolkit is keeping persistently the files used by all tasks in a project, and is providing intuitive ways to navigate 
     complex dependency graphs.
 **Decouple declaration from execution**
-    `railroadtracks` allows the creation of all interconnected computational tasks required for a project before any computation is performed.
-    This, added to the model aspect, allows consistency checks early instead of discovering issues after a number of computation tasks have
-    already been performed. This is also permitting the use different scheduling systems within a project. The toolkit is providing
-    an execution layer using :mod:`multiprocessing`, and custom execution layers can be added.
+    `railroadtracks` allows the creation of all interconnected computational tasks required
+    for a project before any computation is performed. This, added to the model aspect, allows
+    consistency checks early instead of discovering issues after a number of computation tasks have
+    already been performed. This is also permitting the use different scheduling systems within a project.
+    The toolkit is providing task execution engines using :mod:`multiprocessing` and SGE's qsub,
+    and custom execution layers can be added.
 **Implicit naming of result files**
    The toolkit is making a clear separation between the meta-data for a result file (how was a result file obtained) from its file name. User can
    write complete pipelines, while only specifying the file names for the input data at the root of the dependency graph. 
@@ -57,9 +59,4 @@ the alternatives, and possibly computing several times the tasks common to sever
    While it is possible to extend :mod:`railroadtracks` with custom models, a number of modeled steps for
    generating synthetic reads, aligning, quantifying, testing for differential expression, are already included.
 
-
-Tutorial
---------
-
-Tutorial as an IPython notebook [ `html <_static/notebooks/railroadtracks_tutorial.html>`_ | `pynb <_static/notebooks/railroadtracks_tutorial.ipynb>`_ ]
 

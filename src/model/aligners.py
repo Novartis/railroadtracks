@@ -1,4 +1,4 @@
-# Copyright 2014 Novartis Institutes for Biomedical Research
+# Copyright 2014-2015 Novartis Institutes for Biomedical Research
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,8 +28,8 @@ from railroadtracks import (core,
                             environment)
 from railroadtracks.model.files import (FilePattern,
                                         FASTQPossiblyGzipCompressed,
-                                        SavedFASTA,
-                                        SavedSAM,
+                                        FASTAFile,
+                                        SAMFile,
                                         BAMFile,
                                         samtools_getversion,
                                         SamtoolsSamToBam)
@@ -51,7 +51,7 @@ class AssetsIndexer(core.AssetsStep):
     """
     Source = core.assetfactory('Source', 
                                [core.AssetAttr('reference',
-                                               SavedFASTA, '')])
+                                               FASTAFile, '')])
     Target = core.assetfactory('Target', 
                                [core.AssetAttr('indexfilepattern',
                                                FilePattern, '')])
@@ -111,7 +111,7 @@ class BowtieBuild(IndexerAbstract):
                 %s""" % (' '.join(cmd), ose))
             m = re.match(b'^.+? version ([^ \n]+).*', tmp)
             self._version = m.groups()[0]
-        return self._version
+        return str(self._version)
 
     def run(self, assets, parameters=tuple()):
         """ The step on the assets given as parameters. 
@@ -156,6 +156,8 @@ class SailfishIndex(IndexerAbstract):
         attribute :attr:`_default_execpath` will be used.
         :type executable: a :class:`str` or a :class:`environment.R`
         """
+        if type(self) == SailfishIndex:
+            warnings.warn('Model SailfishIndex is deprecated. Please use SalmonIndex.')
         if executable is None:
             executable = type(self)._default_execpath
         self._execpath = executable
@@ -193,6 +195,41 @@ class SailfishIndex(IndexerAbstract):
         cmd.extend(['--transcripts',
                     assets.source.reference.name, 
                     '--out',
+                    assets.target.indexfilepattern.name])
+        
+        with open(os.devnull, "w") as fnull:
+            logger.debug(subprocess.list2cmdline(cmd))
+            returncode = subprocess.call(cmd, stdout = fnull, stderr = fnull)
+        return (cmd, returncode)
+
+
+class SalmonIndex(SailfishIndex):
+    _name = 'salmon-index'
+    _default_execpath = 'salmon'
+
+    parser = argparse.ArgumentParser(_name)
+    parser.add_argument('--threads',
+                        type = int,
+                        default = 2)
+
+    def run(self, assets, parameters = ()):
+        """ 
+        :param assets: 
+        :type assests: instance of :class:`core.AssetsStep` (or child class)
+        :param targets:
+        :type parameters: :class:`tuple`
+        """
+        assert environment.Executable.ispresent(self._execpath)
+        assert isinstance(assets, self.Assets), \
+            "The parameter 'assets' must be a '%s', not a '%s'" % (self.Assets.__name__,
+                                                                   type(assets).__name__)
+        options, unknown = self.parser.parse_known_args(parameters)
+        basename_index = assets.target.indexfilepattern.name
+        cmd = [self._execpath, 'index']
+        cmd.extend(parameters)
+        cmd.extend(['--transcripts',
+                    assets.source.reference.name, 
+                    '-i',
                     assets.target.indexfilepattern.name])
         
         with open(os.devnull, "w") as fnull:
@@ -864,7 +901,7 @@ class StarAlign(AlignerAbstract):
             #     returncode = p_sam2bam.returncode
 
             Assets = SamtoolsSamToBam.Assets
-            assets = Assets(Assets.Source(SavedSAM(starname)),
+            assets = Assets(Assets.Source(SAMFile(starname)),
                             Assets.Target(BAMFile(assets.target.alignment.name)))
             s2b = SamtoolsSamToBam(samtools)
             s2b_cmd, s2b_returncode = s2b.run(assets)

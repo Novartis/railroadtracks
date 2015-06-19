@@ -30,7 +30,7 @@ to implement code to:
 - get the version
 - run the step
 
-The base class for steps is the abstract class :class:`rnaseq.AssetStep`:
+The base class for steps is the abstract class :class:`railroadtracks.core.AssetStep`:
 
 .. literalinclude:: ../src/core.py
    :language: python
@@ -39,9 +39,9 @@ The base class for steps is the abstract class :class:`rnaseq.AssetStep`:
 
 Custom steps will just have to implement the methods and properties.
 For example, counting the reads after alignment with htseq-count is defined as a
-child class of :class:`rnaseq.QuantifierAbstract`, where :attr:`Assets` are defined:
+child class of :class:`railroadtracks.model.quantify.QuantifierAbstract`, where :attr:`Assets` are defined:
 
-.. literalinclude:: ../src/rnaseq.py
+.. literalinclude:: ../src/model/quantify.py
    :language: python
    :start-after: # -- quantifierabstract-begin
    :end-before: # -- quantifierabstract-end
@@ -53,21 +53,21 @@ child class of :class:`rnaseq.QuantifierAbstract`, where :attr:`Assets` are defi
    class for new steps performing one activity
    The :attr:`Assets` is inherited from its parent class, and does not need to be specified further.
 
-   .. literalinclude:: ../src/rnaseq.py
+   .. literalinclude:: ../src/model/quantify.py
       :language: python
       :start-after: # -- assetsquantifier-begin
       :end-before: # -- assetsquantifier-end
 
-   One can note that specific subclasses of :class:`core.SavedEntityAbstract` can be specified
-   (here :class:`SavedCSV` to indicate that file produced by the counting step is a CSV file).
+   One can note that specific subclasses of :class:`railroadtracks.core.SavedEntityAbstract` can be specified
+   (here :class:`CSVFile` to indicate that file produced by the counting step is a CSV file).
    The definition of assets represents a way to add a static typing flavor to Python,
-   as a number of checks are performed behind the hood by :mod:`railroadtracks.rnaseq`.
+   as a number of checks are performed behind the hood by :mod:`railroadtracks.model.files`.
 
 
-The definition of :class:`rnaseq.HTSeqCount` is then implementing
+The definition of :class:`railroadtracks.model.quantify.HTSeqCount` is then implementing
 the remaining methods and attributes
 
-.. literalinclude:: ../src/rnaseq.py
+.. literalinclude:: ../src/model/quantify.py
    :language: python
    :start-after: # -- htseqcount-begin
    :end-before: # -- htseqcount-end

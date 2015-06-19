@@ -1,4 +1,4 @@
-# Copyright 2014 Novartis Institutes for Biomedical Research
+# Copyright 2014-2015 Novartis Institutes for Biomedical Research
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import os
 import argparse
 from railroadtracks import core
 from railroadtracks import environment
-from railroadtracks.model.files import SavedCSV, File
+from railroadtracks.model.files import CSVFile, File
 from railroadtracks.unifex import _cmdfromuei
 
 RSOURCES_DIR = os.path.dirname(__file__)
@@ -33,7 +33,7 @@ class ACTIVITY(core.Enum):
     DIFFEXP = 'Differential Expression'
 
 class AssetsDifferentialExpression(core.AssetsStep):
-    Source = core.assetfactory('Source', [core.AssetAttr('counttable_fn', SavedCSV, ''),
+    Source = core.assetfactory('Source', [core.AssetAttr('counttable_fn', CSVFile, ''),
                                           core.AssetAttr('sampleinfo_fn', File, '')])
     Target = core.assetfactory('Target', [core.AssetAttr('diffexp_fn', File, '')])
 
@@ -130,3 +130,24 @@ class LimmaVoom(RDifferentialExpressionMeasurer):
     _name = 'limma-voom'
 
 # -- note-R-differential-expression-end
+
+class EBSeq(RDifferentialExpressionMeasurer):
+    _rscript_name = 'ebseq.R'
+    _rpackagename = 'EBSeq'
+    _name = 'ebseq'
+    parser = argparse.ArgumentParser(_name)
+    parser.add_argument('--maxround',
+                        dest = 'maxround',
+                        help = 'Parameter maxround in EBSeq::EBTest(). Default: %(default)s',
+                        type = float,
+                        default = 5)
+    parser.add_argument('--qtrm',
+                        dest = 'qtrm',
+                        help = 'Parameter Qtrm in EBSeq::EBTest(). Default: %(default)s',
+                        type = float,
+                        default = 0.75)
+    parser.add_argument('--qtrmcut',
+                        dest = 'qtrmcut',
+                        help = 'Parameter QtrmCut in EBSeq::EBTest(). Default: %(default)s',
+                        type = int,
+                        default = 10)

@@ -1,4 +1,4 @@
-# Copyright 2014 Novartis Institutes for Biomedical Research
+# Copyright 2014-2015 Novartis Institutes for Biomedical Research
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,9 +41,6 @@ present it can mask 'enum34'. Make sure that both 'enum34' is installed and 'enu
 is uninstalled.
     """)
 Enum = enum.Enum
-
-
-#import sqlsoup
 
 #FIXME: Shouldn't the definition come from separate sources (so the coupling between creation and access
 # to the persistance layer is not too much tied to this Python script ?
@@ -141,13 +138,16 @@ class StepGraph(object):
     and this class is aiming at isolating this implementation detail from a user.
     """
 
-    def __init__(self, cache):
+    def __init__(self, persistent_graph):
         # DAG used to resolve order in which steps should be run
         dag = networkx.DiGraph()
         self._dag = dag
-        self._cache = cache
+        self._persistent_graph = persistent_graph
+        # cache of DB IDs
+        self._cache_dbid = dict()
+        self._cache_stepvariant_dbid = dict()
         # build graph from the persistence layer
-        for step in self._cache.iter_steps():
+        for step in self._persistent_graph.iter_steps():
             # step contrains StepConcrete_DbEntry, sources, targets, parameters)
             self._update_graph(step.step.step_variant_id, step.step.id, step.sources, step.targets)
 
@@ -161,7 +161,7 @@ class StepGraph(object):
         stepconcrete_dirname = 'step_%i' % stepconcrete_id.id
         return stepconcrete_dirname
 
-    def add(self, step, assets, parameters=tuple(), tag=1):
+    def add(self, step, assets, parameters=tuple(), tag=1, use_cache=True):
         """ Add a step, associated assets, and optional parameters, to the StepGraph.
 
         The task graph is like a directed (presumably) acyclic multilevel graph.
@@ -185,23 +185,46 @@ class StepGraph(object):
         # add step (note: the _cache ensures uniqueness)
         assert isinstance(step, StepAbstract)
 
+        #
+        if use_cache:
+            task_hashdb = (step.hashdb, assets.source.hashdb, parameters, tag)
+            dbid = self._cache_dbid.get(task_hashdb)
+            if dbid is not None:
+                # We are not done yet as we need to recover the asset.target values
+                for known_target in self._persistent_graph.get_targetassets(dbid):
+                    candidate_target = getattr(assets.target, known_target.label)
+                    if candidate_target._defined:
+                        assert candidate_target.name == known_target.name, "Mismatch between target assets for '%s': previously '%s', now '%s'" % (known_target.label, known_target.entityname, candidate_target.name)
+                    else:
+                        # update the definition of the target
+                        candidate_target.name = known_target.entityname
+                    
+                return DbID(dbid, False)
+            
+
         # obtain the id for variant
-        id_stepvariant = self._cache.id_step_variant(step,
-                                                     step.activities)
+        dbid = None
+        if use_cache:
+            stepvariant_hashdb = (step.hashdb, tuple(x.value for x in step.activities))
+            dbid = self._cache_stepvariant_dbid.get(stepvariant_hashdb)
+        if dbid is None:
+            id_stepvariant = self._persistent_graph.id_step_variant(step,
+                                                                    step.activities).id
+
         # undefined sources is not accepted
         # (exceptions being the source assets that are optionally None)
         if any((not y.allownone and not x._defined) for x,y in zip(assets.source, assets.source._sources)):
             raise ValueError('All sources must be defined.')
 
-        # retrieve or create the stepconcrete
-        stepconcrete_id = self._cache.id_stepconcrete(id_stepvariant.id,
-                                                      assets.source,
-                                                      assets.target,
-                                                      parameters,
-                                                      tag = tag)
+        # retrieve or create the task
+        stepconcrete_id = self._persistent_graph.id_stepconcrete(id_stepvariant,
+                                                                 assets.source,
+                                                                 assets.target,
+                                                                 parameters,
+                                                                 tag = tag)
 
         stepconcrete_dirname = self.stepconcrete_dirname(stepconcrete_id)
-        absdirname = os.path.join(self._cache._wd, stepconcrete_dirname)
+        absdirname = os.path.join(self._persistent_graph._wd, stepconcrete_dirname)
         if stepconcrete_id.new:
             if os.path.isdir(absdirname):
                 raise IOError("The directory %s is already existing." % absdirname)
@@ -229,7 +252,8 @@ class StepGraph(object):
                     uniquename += t._extension[0]
                 uniquename = os.path.join(absdirname, uniquename)
                 # create an entry in the database
-                id_storedentity = self._cache.id_stored_entity(type(t), uniquename)
+                id_storedentity = self._persistent_graph.id_stored_entity(type(t), 
+                                                                          uniquename)
                 if not id_storedentity.new:
                     # The newly created entity should be... well, NEW.
                     # if reaching here, we have a (serious) problem
@@ -239,8 +263,10 @@ class StepGraph(object):
             else:
                 # the asset "t" is defined, and sanity checks are (should be?) in self.id_stepconcrete()
                 pass
-        self._cache._insert_stepconcrete2storedentities(labelnamepairs, 'target', stepconcrete_id.id)
-        self._cache.connection.commit()
+        self._persistent_graph._insert_stepconcrete2storedentities(labelnamepairs, 
+                                                                   'target', 
+                                                                   stepconcrete_id.id)
+        self._persistent_graph.connection.commit()
 
         sources = list()
         for x in assets.source:
@@ -251,6 +277,8 @@ class StepGraph(object):
         self._update_graph(id_stepvariant, stepconcrete_id.id, 
                            tuple(sources),
                            tuple(y for x in assets.target for y in x))
+        # store in the cache
+        self._cache_dbid[task_hashdb] = stepconcrete_id.id
         return stepconcrete_id
 
     def _update_graph(self, id_stepvariant, stepconcrete_id, sources, targets):
@@ -358,7 +386,7 @@ class StepGraph(object):
                     func_stored_entity(elt)
                 func_stored_sequence(stored_entity)
                 stored_entity = storedentity_stack.popleft()                
-            step_concrete = self._cache.get_parenttask_of_storedentity(stored_entity)
+            step_concrete = self._persistent_graph.get_parenttask_of_storedentity(stored_entity)
             if step_concrete is not None:
                 if step_concrete.id not in step_visited:
                     step_stack.append(step_concrete)
@@ -367,7 +395,7 @@ class StepGraph(object):
             while len(step_stack) > 0:
                 step_concrete = step_stack.popleft()
                 func_stepconcrete_storedentity(step_concrete, stored_entity)
-                storedentities = self._cache.get_srcassets(step_concrete.id)
+                storedentities = self._persistent_graph.get_srcassets(step_concrete.id)
                 for entity in storedentities:
                     if entity.id not in storedentity_visited:
                         storedentity_stack.append(entity)
@@ -385,7 +413,7 @@ class StepGraph(object):
                           func_stepconcrete_storedentity):
         while len(storedentity_stack) > 0:
             stored_entity = storedentity_stack.popleft()
-            steps_concrete = self._cache.get_targetstepconcrete(stored_entity)
+            steps_concrete = self._persistent_graph.get_targetstepconcrete(stored_entity)
             for entity in steps_concrete:
                 if entity.id not in step_visited:
                     step_stack.append(entity)
@@ -395,7 +423,7 @@ class StepGraph(object):
                 step_concrete = step_stack.popleft()
                 func_step_concrete(step_concrete)
                 func_stepconcrete_storedentity(step_concrete, stored_entity)
-                storedentities = self._cache.get_targetassets(step_concrete.id)
+                storedentities = self._persistent_graph.get_targetassets(step_concrete.id)
                 for entity in storedentities:
                     if entity.id not in storedentity_visited:
                         storedentity_stack.append(entity)
@@ -416,10 +444,11 @@ class StepGraph(object):
         step_visited = set()
 
         #FIXME: clean the code by taking the nested 'while' loop inside-out
-        step_concrete = self._cache._get_stepconcrete(DbID(step_concrete_id, False))
+        step_concrete = self._persistent_graph._get_stepconcrete(DbID(step_concrete_id, 
+                                                                      False))
         func_step_concrete(step_concrete)
         step_visited.add(step_concrete_id)
-        stored_entities = self._cache.get_targetassets(step_concrete_id)
+        stored_entities = self._persistent_graph.get_targetassets(step_concrete_id)
         for entity in stored_entities:
             if entity.id not in storedentity_visited:
                 storedentity_stack.append(entity)
@@ -545,7 +574,8 @@ class StepGraph(object):
         :type step_concrete_if: a :class:`DbID` (or anything with an attribute :attr:`id`).
         """
         def func_stored_entity(stored_entity):
-            Cls = getattr(self._cache._model, stored_entity.clsname)
+            Cls = getattr(self._persistent_graph._model, 
+                          stored_entity.clsname)
             instance = Cls(stored_entity.entityname)
             if hasattr(instance, 'iterlistfiles'):
                 nameiter = (os.path.join(os.path.dirname(instance.name), basename) \
@@ -560,8 +590,8 @@ class StepGraph(object):
                 else:
                     warnings.warn("The pathname '%s' associated with the store entity '%s' cannot be removed." % (pathname, str(stored_entity)))
         def func_step_concrete(step_concrete):
-            self._cache.step_concrete_state(step_concrete,
-                                            _TASK_STATUS_LIST[_TASK_TODO])
+            self._persistent_graph.step_concrete_state(step_concrete,
+                                                       _TASK_STATUS_LIST[_TASK_TODO])
         def func_storedentity_stepconcrete(stored_entity, step_concrete):
             pass
         def func_stepconcrete_storedentity(step_concrete, stored_entity):
@@ -650,8 +680,7 @@ class StoredSequence(object):
                           'length: %i' % len(self)))
 
 
-#FIXME: rename: this is not a `list`
-class PersistentTaskList(object):
+class PersistentTaskGraph(object):
     """
     List of tasks stored on disk.
     
@@ -659,12 +688,13 @@ class PersistentTaskList(object):
 
     StoredEntityNoLabel = namedtuple('StoredEntityNoLabel', 'id clsname entityname')
 
-    def __init__(self, db_fn, model, wd='.', force_create=False):
+    def __init__(self, db_fn, model, wd='.', force_create=False, isolation_level=None):
         """
         :param db_fn: file name for the database.
         :param wd: working directory (where derived data files are stored)
         :param force_create: recreate database if a file with the same name is already
                              present.
+        :param isolation_level: passed to :func:`sqlite3.connection`.
         """
 
         # check whether the file containing the SQLite database exists.
@@ -684,7 +714,7 @@ class PersistentTaskList(object):
         self._model_steplist = unifex._make_stepdict(model)
         self._wd = wd
         self.created = create
-        connection = sqlite3.connect(db_fn)
+        connection = sqlite3.connect(db_fn, isolation_level=isolation_level)
         self.connection = connection
         if create:
             self._create(db_fn, wd)
@@ -883,7 +913,21 @@ class PersistentTaskList(object):
         WHERE step_concrete.id=?
         """
         cursor.execute(sql, (step_concrete_id.id, ))
-        res = StepConcrete_DbEntry(*cursor.fetchone())
+        row = cursor.fetchone()
+        if row is None:
+            # Trouble. Trying to provide an informative error message
+            sql = """
+            SELECT *
+            FROM step_concrete
+            WHERE id=?
+            """
+            cursor.execute(sql)
+            if len(cursor.fetchall()) == 0:
+                raise ValueError("The task ID %i cannot be found." % step_concrete_id.id)
+            else:
+                raise ValueError("Error with the database. Likely because of interrupted process while entering tasks.")
+
+        res = StepConcrete_DbEntry(*row)
         return res
 
 
@@ -1083,9 +1127,9 @@ class PersistentTaskList(object):
 
     def id_stored_sequence(self, cls, clsname_sequence):
         """
-        Conditionally add a stored entity (add only if not already present)
+        Conditionally add a sequence of stored entities (add only if not already present)
         :param clsname_sequence: Sequence of pairs (Python class for the stored entity, parameter "name" for the class "cls")
-        :rtype: ID for the pattern as a :class:`DbID`.
+        :rtype: ID for the sequence as a :class:`DbID`.
         """
         cursor = self.connection.cursor()
 
@@ -1097,8 +1141,9 @@ class PersistentTaskList(object):
         """
         stored_entity_ids = list()
         candidates = None
+        # iterate through the entities in the sequence
         for pos, (cls_elt, name_elt) in enumerate(clsname_sequence):
-            # ensure that the stored entities are tracked
+            # ensure that the entity is tracked
             se_id = self.id_stored_entity(cls_elt, name_elt)
             stored_entity_ids.append(se_id)
             res = cursor.execute(sql, (se_id.id, pos))
@@ -1180,27 +1225,28 @@ class PersistentTaskList(object):
             # query if any step_type already has all the associated activities
             # The if statement saves that trouble if any activity had to be created
             # (since then the step_type cannot possibly be already in the database)
+            sql_activity = """SELECT step_type_id FROM step_type2activity WHERE step_activity_id = %i"""
+
             sql = """
-            SELECT step_type.id
-            FROM step_type
-            INNER JOIN (SELECT step_type2activity.step_type_id
-                        FROM step_type2activity
-                        INNER JOIN step_type
-                            ON step_type.id = step_type2activity.step_type_id
-                        WHERE step_type.id %(activities)s
-                        GROUP BY step_type2activity.step_type_id
-                        HAVING COUNT(DISTINCT step_activity_id) = ?) matches
-            ON step_type.id = matches.step_type_id;
-            """
-            if len(activity_ids) == 1:
-                sql = sql % {'activities': '== %i' % activity_ids[0].id}
-            else:
-                sql = sql % {'activities': 'IN ' + repr(tuple(x.id for x in activity_ids))}
-            res = cursor.execute(sql,
-                                 (len(activities),))
+            SELECT step_type_id
+            FROM
+              (SELECT step_type_id
+               FROM step_type2activity
+               WHERE step_activity_id IN
+            """ + \
+                '    (' + '\nINTERSECT\n'.join((sql_activity % dbid.id) for dbid in activity_ids) + ')' + \
+                """
+                EXCEPT
+                SELECT step_type_id
+                FROM step_type2activity
+                WHERE step_activity_id NOT IN (%s)
+                )
+                """ % ','.join(str(dbid.id) for dbid in activity_ids)
+            res = cursor.execute(sql)
+
             steptype_id = res.fetchall()
             
-        if steptype_id is None:
+        if steptype_id is None or len(steptype_id) == 0:
             # if no activity ID, we should create one
             sql = """
             INSERT INTO step_type VALUES(null);
@@ -1218,13 +1264,32 @@ class PersistentTaskList(object):
                 cursor.execute(sql, (steptype_id, activity_id.id))
             self.connection.commit()
             return DbID(steptype_id, True)
-        else:
+        elif len(steptype_id) > 1:
             #FIXME: if more than one steptype_id found, we have a problem
-            if len(steptype_id) > 1:
-                raise Exception("Houston, we have problem. We have several step types (%s) with all the activities." % repr(activities))
-            steptype_id = steptype_id[0][0]
-            return DbID(steptype_id, False)
+            raise Exception("Houston, we have problem. We have several step types (%s) with all the activities." % repr(activities))
 
+        steptype_id = steptype_id[0][0]
+        return DbID(steptype_id, False)
+
+    def _iter_step_type(self):
+        sql = """
+        SELECT step_type.id, activity
+        FROM step_type
+        INNER JOIN step_type2activity
+        ON step_type2activity.step_type_id=step_type.id
+        INNER JOIN step_activity
+        ON step_type2activity.step_activity_id=step_activity.id
+        GROUP BY step_type.id
+        """
+        cursor = self.connection.cursor()
+        cursor.execute(sql)
+        while True:
+            rows = cursor.fetchmany(100)
+            if not rows:
+                break
+            for row in rows:
+                yield row
+            
 
     def id_step_variant(self,
                         step,
@@ -1461,7 +1526,6 @@ class PersistentTaskList(object):
                     # no candidate left: the task is not yet tracked.
                     break
             if len(candidates) > 1:
-                import pdb; pdb.set_trace()
                 raise Exception("DB consistency error: several candidate tasks were found.")
             elif len(candidates) == 1:
                 step_concrete_id = next(iter(candidates))
@@ -1637,7 +1701,8 @@ class PersistentTaskList(object):
                         # stored_sequence
                 )
                 sql = sql_se
-            cursor.execute(sql, etid)
+            res = cursor.execute(sql, etid)
+            
         #labelstepandnames = tuple( for cn in asset.iteritems())
         #cursor.executemany(sql,
         #labelstepandnames)
@@ -1659,6 +1724,11 @@ class PersistentTaskList(object):
 
     def step_concrete_state(self, step_concrete_id,
                             state_id):
+        """ Set the state of a task:
+
+        - step_concrete_id: task ID (DbID)
+        - state_id:         state ID
+        """
         sql = """
         UPDATE step_concrete
         SET step_status_id=?
@@ -1839,3 +1909,150 @@ class PersistentTaskList(object):
         raise NotImplementedError()
 
 
+
+class CachedPersistentTaskGraph(PersistentTaskGraph):
+
+    def __init__(self, db_fn, model, wd='.', force_create=False, isolation_level=None):
+        super(CachedPersistentTaskGraph, self).__init__(db_fn, model, wd=wd, 
+                                                        force_create=force_create,
+                                                        isolation_level=isolation_level)
+        # cache of DB IDs
+        self._cache_steptype_dbid = dict()
+        self._cache_task_dbid = dict()
+        self._cache_dbid_task_targets = dict()
+        self._cache_stepvariant_dbid = dict()
+        self._cache_dbid_stepvariant = dict()
+        self._cache_stepparameters_dbid = dict()
+        self._cache_storedentity_dbid = dict()
+        self._cache_storedsequence_dbid = dict()
+
+    def id_step_type(self, activities):
+        hashdb = activities
+        dbid = self._cache_steptype_dbid.get(hashdb)
+        if dbid is not None:
+            res = DbID(dbid, False)
+        else:
+            res = super(CachedPersistentTaskGraph, self).id_step_type(activities)
+            self._cache_steptype_dbid[hashdb] = res.id
+        return res
+
+    def _cache_id_step_type(self):
+        for dbid, activities in itertools.groupby(operator.itemgetter(0),
+                                                  self._iter_step_type()):
+            hashdb = tuple(activities)
+            self._cache_steptype_dbid[hashdb] = dbid
+
+    def id_step_variant(self, step, activities):
+        cls = type(step)
+        #FIXME: redundancy between the full class name and the activities)
+        step_hashdb = (cls.__module__ + '.' + cls.__name__, activities)
+        variant_hashdb = (step.version, step._execpath)
+        hashdb = (step_hashdb, variant_hashdb)
+        dbid = self._cache_stepvariant_dbid.get(hashdb)
+        if dbid is not None:
+            res = DbID(dbid, False)
+        else:
+            res = super(CachedPersistentTaskGraph, self).id_step_variant(step, activities)
+            self._cache_stepvariant_dbid[hashdb] = res.id
+            self._cache_dbid_stepvariant[res.id] = (step_hashdb, variant_hashdb)
+        return res
+
+
+    def id_stepconcrete(self, step_variant_id,
+                        sources, targets, parameters,
+                        tag = 1):
+        """
+        Conditionally add a task ("concrete" step),
+        that is a step variant (executable and parameters)
+        to which source and target files, as well as parameters, are added.
+
+        :param step_variant_id: ID for the step variant
+        :type step_variant_id: integer
+        :param sources: sequence of sources
+        :type sources: :class:`AssetSet`
+        :param targets: sequence of targets
+        :type targets: :class:`AssetSet`
+        :param parameters: list of parameters
+        :type parameters: a sequence of :class:`str`
+        :param tag: a tag, used to performed repetitions of the exact same task
+        :type tag: a sequence of :class:`int`
+
+        :rtype: :class:`DbID`
+
+        """
+
+        assert isinstance(step_variant_id, int)
+
+        step_variant_hashdb = self._cache_dbid_stepvariant.get(step_variant_id)
+        if step_variant_hashdb is None:
+            raise ValueError('There is no step variant with ID %i' % step_variant_id)
+        step_hashdb, variant_hashdb = step_variant_hashdb
+        task_hashdb = (step_hashdb, sources.hashdb, parameters, tag)
+        dbid = self._cache_task_dbid.get(task_hashdb)
+        if dbid is not None:
+
+            res = DbID(dbid, False)
+
+            # Some of the targets might be undefined (because the user leaves it to railroadtracks to
+            # fill the blanks). We need to populate these with the values in the database in order to
+            # be able to compute the hash.
+            if any(not getattr(targets, x.label)._defined for x in self.get_targetassets(res)):
+                # FIXME: for now just hit the database (no use of the cache)
+                res = super(CachedPersistentTaskGraph, self).id_stepconcrete(step_variant_id, 
+                                                                             sources, 
+                                                                             targets,
+                                                                             parameters, 
+                                                                             tag=tag)
+            elif dbid in self._cache_dbid_task_targets:
+                # check that the target assets have not changed
+                if targets.hashdb != self._cache_dbid_task_targets[dbid]:
+                    raise ValueError("Target assets not matching the assets already associated with the task.")
+            else:
+                self._cache_dbid_task_targets[res.id] = targets.hashdb
+            
+        else:
+            res = super(CachedPersistentTaskGraph, self).id_stepconcrete(step_variant_id, sources, targets, parameters, tag=tag)
+            self._cache_task_dbid[task_hashdb] = res.id
+            if all(x._defined for x in targets):
+                self._cache_dbid_task_targets[res.id] = targets.hashdb
+        return res
+
+
+    def id_stepparameters(self, parameters):
+        
+        dbid = self._cache_stepparameters_dbid.get(parameters)
+        if dbid is not None:
+            res = DbID(dbid, False)
+        else:
+            res = super(CachedPersistentTaskGraph, self).id_stepparameters(parameters)
+            self._cache_stepparameters_dbid[parameters] = res.id
+        return res
+
+
+    def id_stored_entity(self, cls, name):
+        hashdb = core.SavedEntityAbstract._hash_components(cls, name)
+        dbid = self._cache_storedentity_dbid.get(hashdb)
+        if dbid is not None:
+            res = DbID(dbid, False)
+        else:
+            res = super(CachedPersistentTaskGraph, self).id_stored_entity(cls, name)
+            self._cache_storedentity_dbid[hashdb] = res.id
+        return res
+        
+
+    def id_stored_sequence(self, cls, clsname_sequence):
+        names_hashdb = list()
+        clsname_sequence_tpl = tuple(clsname_sequence)
+        for (elt_cls, elt_name) in clsname_sequence_tpl:
+            dbid = self.id_stored_entity(elt_cls, elt_name) 
+            item_hashdb = core.SavedEntityAbstract._hash_components(elt_cls, elt_name)
+            names_hashdb.append(item_hashdb)
+        hashdb = (cls, tuple(names_hashdb))
+        dbid = self._cache_storedsequence_dbid.get(hashdb)
+        if dbid is not None:
+            res = DbID(dbid, False)
+        else:
+            res = super(CachedPersistentTaskGraph, self).id_stored_sequence(cls, clsname_sequence_tpl)
+            self._cache_storedsequence_dbid[hashdb] = res.id
+        return res
+        

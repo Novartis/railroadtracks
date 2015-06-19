@@ -128,12 +128,7 @@ The persistent layer can generate the bash commands for running the unified exec
 This is making the use of any existing queuing or scheduling system able to take `bash` script
 straightforward.
 
-.. note::
-
-   This is possible, yet not fully documented. Please check the examples of
-   recipes (Section :ref:`recipes-label`) for details about how it is already
-   possible to run tasks from a Python script.
-
+An implementaion using SGE's qsub is provided with :mod:`railroadtracks.easy.qsub`.
 
 Docstrings
 ----------
