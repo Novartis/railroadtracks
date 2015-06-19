@@ -90,4 +90,8 @@ install:
   # install railroadtracks
   - pip install .
 script:
-  - python -m railroadtracks.tests
+  - if [[ "$TRAVIS_BRANCH" == "0.3.x" ]]; then
+        python -m railroadtracks.tests;
+    else
+        python -m unittest discover railroadtracks;
+    fi
