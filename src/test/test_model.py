@@ -24,7 +24,11 @@ import railroadtracks.model.simulate
 import railroadtracks.model.diffexp
 import railroadtracks.model.quantify
 
-
+try:
+    import ngs_plumbing
+    has_ngsp = True
+except ImportError:
+    has_ngsp = False
 
 
 def _build_StepIndex(cls, executable, 
