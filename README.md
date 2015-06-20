@@ -46,6 +46,7 @@ docker pull lgautier/railroadtracks
 docker run -it -p 8888:8888 -w /usr/local/packages/railroadtracks/doc/notebooks lgautier/railroadtracks ipython notebook --ip=0.0.0.0 --no-browser
 ```
 
+A browser running on the same machine as the container can then be pointed to:
 [http://localhost:8888](http://localhost:8888)
 
 If on a non-Linux system using [boot2docker](http://boot2docker.io), you may have to point your browser to the IP mapped to the VM docker is running in. The IP can be obtained with:
