@@ -149,7 +149,7 @@ TaskSetGraph
 dependency graph. :class:`TaskSetGraph` helps handling all the tasks by allowing one to manipulate
 groups of tasks not connected directly as :class:`TaskSet` objects and in the context
 of the task-level dependency graph. Such sets can be added directly to a :class:`TaskSetGraph`
-while dependencies between the task sets are inferred from the task-level relationship.
+while dependencies between the task sets are inferred from task-level relationships.
 
 .. code-block:: python
 
