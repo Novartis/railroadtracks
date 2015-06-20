@@ -99,3 +99,6 @@ RUN DEBIAN_FRONTEND=noninteractive cd /usr/local/packages && wget -q https://git
 RUN DEBIAN_FRONTEND=noninteractive cd /usr/local/packages && wget -q https://ccb.jhu.edu/software/tophat/downloads/tophat-2.0.14.tar.gz && tar -xzf tophat-2.0.14.tar.gz && cd tophat-2.0.14 && CC=gcc-4.8 CXX=g++-4.8 ./configure --prefix=/usr/local && make && make install 
 
 RUN DEBIAN_FRONTEND=noninteractive pip install git+https://github.com/Novartis/railroadtracks.git@version_0.4.x#egg=railroadtracks && cd /usr/local/packages && cd /usr/local/packages && git clone -b version_0.4.x git://github.com/Novartis/railroadtracks.git
+
+# build railroadtracks documentation
+RUN DEBIAN_FRONTEND=noninteractive cd /usr/local/packages/railroadtracks/doc && make -B notebooks && make html
