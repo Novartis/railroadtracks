@@ -1,7 +1,7 @@
 FROM python:2.7
 
 # Initial update
-RUN DEBIAN_FRONTEND=noninteractive apt-getclean && apt-get update && apt-get dist-upgrade -y
+RUN DEBIAN_FRONTEND=noninteractive apt-get clean && apt-get update && apt-get dist-upgrade -y
 # add apt-add-repository
 #RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
 #  python-software-properties \
