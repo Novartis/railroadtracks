@@ -36,6 +36,24 @@ pip install https://github.com/Novartis/railroadtracks/archive/master.zip
 
 A [Docker](http://www.docker.io) container is also availale (`lgautier/railroadtracks`).
 
+```
+# pull the Docker images from docker.io
+docker pull lgautier/railroadtracks 
+```
+
+```
+# Run an ipython notebook server from the container
+docker run -it -p 8888:8888 -w /usr/local/packages/railroadtracks/doc/notebooks lgautier/railroadtracks ipython notebook --ip=0.0.0.0 --no-browser
+```
+
+[http://localhost:8888](http://localhost:8888)
+
+If on a non-Linux system using [boot2docker](http://boot2docker.io), you may have to point your browser to the IP mapped to the VM docker is running in. The IP can be obtained with:
+
+```
+boot2docker ip
+```
+
 Documentation
 -------------
 
