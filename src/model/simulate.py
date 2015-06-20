@@ -135,7 +135,7 @@ else:
 def randomfastq_pe(entry, n, length, insert, lane=1, tile=2):
     sequence_rc = entry.sequence[::-1].translate(COMPLEMENT_TABLE)
     quality_template = b'wxyz{|}~'
-    dummyqual = (quality_template * ((length/len(quality_template))+1))[:length]
+    dummyqual = (quality_template * ((length//len(quality_template))+1))[:length]
 
     for r_i in range(n):
         r_start = randomreadstart(entry, length+insert+length)
