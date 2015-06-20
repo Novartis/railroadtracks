@@ -1223,8 +1223,7 @@ class GzipFastqFilePairTestCase(unittest.TestCase):
         self.read2_fn = read2_fh.name
 
     def tearDown(self):
-        os.unlink(self.read1_fn)
-        os.unlink(self.read12_fn)
+        shutil.rmtree(self.tempdir)
 
     @unittest.skipIf(not has_ngsp,
                      'The Python package ngs-plumbing is missing.')
