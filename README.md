@@ -22,7 +22,7 @@ Installation
 The documentation should be consulted for information about the requirements and the installation process.
 
 While we are working on a link to a build of the documentation, the Sphinx source for it
-are be consulted: <a href="doc/installation.rst">doc/installation.rst</a>.
+are be consulted: [doc/installation.rst](https://raw.githubusercontent.com/Novartis/railroadtracks/master/doc/installation.rst).
 
 Released versiond are available on Pypi. Installing the latest release is as easy as:
 ```
