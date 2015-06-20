@@ -451,7 +451,8 @@ class ModelIndexTestCase(unittest.TestCase):
         self.assertEqual(set(runner.activities), set((rnaseq.ACTIVITY.INDEX, )))
         assets, cmd, returncode = _build_StepIndex(rnaseq.StarIndex, execname, 
                                                    os.path.join(self.tempdir, 'reference'),
-                                                   parameters=('--genomeChrBinNbits', '12'))
+                                                   parameters=('--genomeChrBinNbits', '12',
+                                                               '--genomeSAindexNbases', '8'))
         self.assertEqual(0, returncode)
 
     @unittest.skipIf(not environment.Executable.ispresent('gmap_build'),
@@ -709,13 +710,18 @@ class ModelAlignTestCase(unittest.TestCase):
         # STAR is whimsical. Try running the tests up to 5 times.
         self._test_StepAlign_singlereads(rnaseq.StarIndex, 'STAR',
                                          rnaseq.StarAlign, 'STAR',
+                                         parameters_index = ('--genomeChrBinNbits', '12',
+                                                             '--genomeSAindexNbases', '8'),
                                          align_max_attempts = 3)
+
     @unittest.skipIf(not environment.Executable.ispresent('STAR'),
                      'STAR is not in the PATH')
     def test_StepStarAlign_pairedreads(self):
         # STAR is whimsical. Try running the tests up to 5 times.
         self._test_StepAlign_pairedreads(rnaseq.StarIndex, 'STAR',
                                          rnaseq.StarAlign, 'STAR',
+                                         parameters_index = ('--genomeChrBinNbits', '12',
+                                                             '--genomeSAindexNbases', '8'),
                                          align_max_attempts = 3)
 
 
