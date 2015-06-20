@@ -1213,6 +1213,7 @@ class ModelCRCHeadTailTestCase(unittest.TestCase):
 class GzipFastqFilePairTestCase(unittest.TestCase):
 
     def setUp(self):
+        self.tempdir = tempfile.mkdtemp()
         read1_fh = tempfile.NamedTemporaryFile(prefix='read1', suffix='.fq.gz', dir=self.tempdir, delete=False)
         read1_fh.close()
         self.read1_fn = read1_fh.name
