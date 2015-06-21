@@ -59,8 +59,14 @@ boot2docker ip
 Documentation
 -------------
 
-Automated building of the documentation is being worked on.
+Sphinx documentation is included in the source tree. An HTML build of the documentation is available at
+[http://pythonhosted.org/railroadtracks/](http://pythonhosted.org/railroadtracks/).
 
-In the meantime there is a [tutorial as an ipython notebook](http://nbviewer.ipython.org/github/Novartis/railroadtracks/blob/master/doc/notebooks/railroadtracks_tutorial.ipynb")
+The tutorial [http://pythonhosted.org/railroadtracks/tutorial.html](http://pythonhosted.org/railroadtracks/tutorial.html)
+is a genuine notebook rendered into the Sphinx document. The notebook and an HTML render of it
+are available, and running ipython notebook through the container (see above) provides a complete environment to go through
+the tutorial.
+
+
 
 
